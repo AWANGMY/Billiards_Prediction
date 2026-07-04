@@ -13,8 +13,6 @@ Potted Balls   number of balls potted after the break shot
 ## Project Structure
 
 ```text
-.
-├── .gitignore
 ├── readme.md
 ├── setup.md
 ├── 1 - MLP.py
