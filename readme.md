@@ -13,33 +13,43 @@ Potted Balls   number of balls potted after the break shot
 ## Project Structure
 
 ```text
-ClassesData/
-  DatasetLoader.py          # load processed tensor data
-  BilliardsDataset.py       # PyTorch Dataset
-  PreprocessBilliards.py    # convert raw XML/XLSX files to processed .pt data
-
-ClassesML/
-  Block.py                  # shared model blocks
-  Scope.py                  # classification loss and optimizer
-  MLP.py                    # MLP model
-  CNN.py                    # paper-style BLCNN model
-  Transformer.py            # Transformer and Spatial Attention models
-
-Utilities/
-  Utilities.py              # metrics, plots, saved results
-
-1 - MLP.py
-2 - Transformer.py
-3 - BLCNN.py
-4 - Attention.py
-
-Dataset/
-  processed/
-    billiards_layout.pt     # processed tensor dataset
-
-Output/
-  images/                   # saved loss curves, accuracy curves, confusion matrices
-  results/                  # saved CSV results and predictions
+.
+├── .gitignore
+├── readme.md
+├── setup.md
+├── 1 - MLP.py
+├── 2 - Transformer.py
+├── 3 - BLCNN.py
+├── 4 - Attention.py
+├── ClassesData/
+│   ├── BilliardsDataset.py       # PyTorch Dataset
+│   ├── DatasetLoader.py          # load processed tensor data
+│   └── PreprocessBilliards.py    # convert raw XML/XLSX files to processed .pt data
+├── ClassesML/
+│   ├── Block.py                  # shared model blocks
+│   ├── CNN.py                    # paper-style BLCNN model
+│   ├── MLP.py                    # MLP model
+│   ├── Scope.py                  # classification loss and optimizer
+│   └── Transformer.py            # Transformer and Spatial Attention models
+├── Utilities/
+│   └── Utilities.py              # metrics, plots, saved results
+├── Dataset/
+│   ├── data_layouts/             # raw layout data (git ignored)
+│   │   ├── All cordinates/
+│   │   └── Variables/
+│   ├── data _trajectories/       # raw trajectory data (git ignored)
+│   │   └── ...
+│   └── processed/
+│       └── billiards_layout.pt   # processed tensor dataset
+├── Baseline/                     # original baseline code (git ignored)
+│   └── code/
+│       ├── BLCNN/
+│       ├── BLGAN/
+│       ├── Preprocessing/
+│       └── README.md
+└── Output/                       # training outputs (git ignored)
+    ├── images/
+    └── results/
 ```
 
 ## Preprocessing
@@ -148,10 +158,11 @@ Output/results/
 
 ## Notes
 
-The raw dataset folders and original baseline code are ignored by git because they are large and can be downloaded separately:
+The following folders are currently ignored by git:
 
 ```text
 Baseline/
 Dataset/data_layouts/
-Dataset/data_trajectories/
+Dataset/data _trajectories/
+Output/
 ```
