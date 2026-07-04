@@ -1,0 +1,18 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local environment
+.venv/
+venv/
+env/
+
+# Original author baseline code
+Baseline/
+
+# Raw dataset folders
+Dataset/data_layouts/
+Dataset/data_trajectories/
+Dataset/data _trajectories/
+Output/
