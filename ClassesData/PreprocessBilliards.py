@@ -1,8 +1,10 @@
 import ast
+import json
 import math
 import os
 import re
 import zipfile
+from collections import Counter
 import xml.etree.ElementTree as ET
 
 import numpy as np
@@ -22,6 +24,7 @@ class BilliardsPreprocessor:
             output_path = os.path.join(self.root, 'processed', 'billiards_layout.pt')
 
         self.output_path = output_path
+        self.last_audit = None
 
     def preprocess(self,
                    train_ratio=0.7,
@@ -31,6 +34,7 @@ class BilliardsPreprocessor:
                    deduplicate=True,
                    clamp_coordinates=True,
                    split_method='paper',
+                   audit_json=None,
                    save=True):
 
         samples = self._build_samples(drop_bad_remarks=drop_bad_remarks,
@@ -42,6 +46,10 @@ class BilliardsPreprocessor:
                                                  test_ratio=1.0 - train_ratio,
                                                  val_ratio=val_ratio,
                                                  seed=seed)
+        elif split_method == 'paper40':
+            split_indices = self._split_by_paper40(samples,
+                                                   train_ratio=0.4,
+                                                   seed=seed)
         elif split_method == 'group':
             split_indices = self._split_by_group(samples,
                                                  train_ratio=train_ratio,
@@ -51,12 +59,16 @@ class BilliardsPreprocessor:
             raise ValueError('Unknown split method: ' + str(split_method))
 
         data = self._pack_samples(samples, split_indices, split_method)
+        self._finalize_audit(data, split_method, seed)
 
         if save:
             output_dir = os.path.dirname(self.output_path)
             if output_dir != '':
                 os.makedirs(output_dir, exist_ok=True)
             torch.save(data, self.output_path)
+
+        if audit_json is not None:
+            self._write_audit_json(audit_json)
 
         return data
 
@@ -67,16 +79,30 @@ class BilliardsPreprocessor:
 
         xml_index = self._index_coordinate_xml_files()
         variables_files = self._list_files(self.variables_root, '.xlsx')
+        coordinate_xml_files = self._list_files(self.coordinates_root, '.xml')
+
+        audit = {'settings': {'drop_bad_remarks': drop_bad_remarks,
+                              'deduplicate': deduplicate,
+                              'clamp_coordinates': clamp_coordinates},
+                 'input': {'variables_files': len(variables_files),
+                           'coordinate_xml_files': len(coordinate_xml_files),
+                           'indexed_coordinate_xml_files': len(xml_index)},
+                 'filters': Counter(),
+                 'label_distribution': {},
+                 'accepted_samples': 0,
+                 'unique_groups': 0}
 
         samples = []
         seen_layouts = set()
 
         for variables_file in variables_files:
             rows = self._read_variables_rows(variables_file)
+            audit['filters']['raw_rows'] += len(rows)
 
             for row in rows:
                 frame = self._to_int(self._get_value(row, ['frame']))
                 if frame is None:
+                    audit['filters']['missing_frame'] += 1
                     continue
 
                 potted_after_break = self._to_int(self._get_value(row, ['potted after break']))
@@ -85,20 +111,25 @@ class BilliardsPreprocessor:
                 win = self._to_int(self._get_value(row, ['win']))
 
                 if not self._valid_count_label(potted_after_break):
+                    audit['filters']['invalid_potted_after_break'] += 1
                     continue
                 if clear not in [0, 1] or win not in [0, 1]:
+                    audit['filters']['invalid_clear_or_win'] += 1
                     continue
 
                 remarks = str(self._get_value(row, ['remarks']) or '').lower()
                 if drop_bad_remarks and self._is_bad_remark(remarks):
+                    audit['filters']['bad_remarks'] += 1
                     continue
 
                 xml_file = self._find_coordinate_xml(variables_file, frame, xml_index)
                 if xml_file is None:
+                    audit['filters']['missing_coordinate_xml'] += 1
                     continue
 
                 positions = self._read_layout_xml(xml_file)
                 if positions is None or len(positions) != 10:
+                    audit['filters']['invalid_or_non_10_ball_xml'] += 1
                     continue
 
                 positions = self._normalize_positions(positions,
@@ -118,6 +149,7 @@ class BilliardsPreprocessor:
 
                 layout_key = tuple(np.round(features.reshape(-1), 4).tolist())
                 if deduplicate and layout_key in seen_layouts:
+                    audit['filters']['duplicate_layout'] += 1
                     continue
                 seen_layouts.add(layout_key)
 
@@ -134,6 +166,14 @@ class BilliardsPreprocessor:
                                 'frame': frame,
                                 'xml_file': xml_file,
                                 'variables_file': variables_file})
+
+        audit['accepted_samples'] = len(samples)
+        audit['unique_groups'] = len(set([sample['group_id'] for sample in samples]))
+        for target in ['clear', 'win', 'potted_after_break', 'potted_when_break']:
+            values = [sample[target] for sample in samples]
+            audit['label_distribution'][target] = dict(sorted(Counter(values).items()))
+        audit['filters'] = dict(sorted(audit['filters'].items()))
+        self.last_audit = audit
 
         if len(samples) == 0:
             raise RuntimeError('No valid billiards samples were found under ' + self.layout_root)
@@ -229,6 +269,58 @@ class BilliardsPreprocessor:
         return {'train': torch.tensor(train_new_indices, dtype=torch.long),
                 'val': torch.tensor(val_indices, dtype=torch.long),
                 'test': torch.tensor(test_indices, dtype=torch.long)}
+
+    def _split_by_paper40(self, samples, train_ratio=0.4, seed=123):
+
+        num_data = len(samples)
+        indices_data = np.arange(num_data)
+        rng = np.random.default_rng(seed)
+        rng.shuffle(indices_data)
+
+        split = int(np.floor(train_ratio * num_data))
+        train_indices = indices_data[:split].tolist()
+        test_indices = indices_data[split:].tolist()
+
+        return {'train': torch.tensor(train_indices, dtype=torch.long),
+                'val': torch.tensor([], dtype=torch.long),
+                'test': torch.tensor(test_indices, dtype=torch.long)}
+
+    def _finalize_audit(self, data, split_method, seed):
+
+        if self.last_audit is None:
+            return
+
+        self.last_audit['split'] = {'method': split_method,
+                                    'seed': seed,
+                                    'sizes': {name: len(indices)
+                                              for name, indices in data['split_indices'].items()}}
+        self.last_audit['paper_feature_stats'] = self._paper_feature_stats(
+            data['x_paper'], data['paper_feature_names'])
+
+    def _paper_feature_stats(self, x_paper, feature_names):
+
+        stats = []
+        for index, name in enumerate(feature_names):
+            values = x_paper[:, :, index].reshape(-1)
+            stats.append({'index': index,
+                          'name': name,
+                          'min': int(values.min().item()),
+                          'max': int(values.max().item()),
+                          'unique': int(torch.unique(values).numel())})
+
+        return stats
+
+    def _write_audit_json(self, audit_json):
+
+        if self.last_audit is None:
+            return
+
+        output_dir = os.path.dirname(audit_json)
+        if output_dir != '':
+            os.makedirs(output_dir, exist_ok=True)
+
+        with open(audit_json, 'w', encoding='utf-8') as output_file:
+            json.dump(self.last_audit, output_file, indent=2, sort_keys=True)
 
     def _read_variables_rows(self, variables_file):
 
@@ -760,7 +852,8 @@ if __name__ == '__main__':
     parser.add_argument('--keep-bad-remarks', action='store_true')
     parser.add_argument('--keep-duplicates', action='store_true')
     parser.add_argument('--no-clamp', action='store_true')
-    parser.add_argument('--split-method', type=str, default='paper', choices=['paper', 'group'])
+    parser.add_argument('--split-method', type=str, default='paper', choices=['paper', 'paper40', 'group'])
+    parser.add_argument('--audit-json', type=str, default=None)
     args = parser.parse_args()
 
     preprocessor = BilliardsPreprocessor(root=args.root, output_path=args.output)
@@ -771,6 +864,7 @@ if __name__ == '__main__':
                                    deduplicate=not args.keep_duplicates,
                                    clamp_coordinates=not args.no_clamp,
                                    split_method=args.split_method,
+                                   audit_json=args.audit_json,
                                    save=True)
 
     print('saved:', preprocessor.output_path)
@@ -781,3 +875,5 @@ if __name__ == '__main__':
     print('train:', len(data['split_indices']['train']))
     print('val:', len(data['split_indices']['val']))
     print('test:', len(data['split_indices']['test']))
+    if args.audit_json is not None:
+        print('audit_json:', args.audit_json)
