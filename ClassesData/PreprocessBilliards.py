@@ -852,7 +852,7 @@ if __name__ == '__main__':
     parser.add_argument('--keep-bad-remarks', action='store_true')
     parser.add_argument('--keep-duplicates', action='store_true')
     parser.add_argument('--no-clamp', action='store_true')
-    parser.add_argument('--split-method', type=str, default='paper', choices=['paper', 'paper40', 'group'])
+    parser.add_argument('--split-method', type=str, default='paper40', choices=['paper', 'paper40', 'group'])
     parser.add_argument('--audit-json', type=str, default=None)
     args = parser.parse_args()
 

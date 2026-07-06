@@ -2,23 +2,23 @@
 
 ## Project Objective
 
-This project studies break-shot outcome prediction in billiards. The repository keeps five model entry points:
+This project reproduces break-shot outcome prediction in billiards and compares five models:
 
-1. `0 - BLFormer`
-2. `1 - BLCNN`
-3. `2 - MLP`
-4. `3 - Transformer`
-5. `4 - Attention`
+- BLFormer
+- BLCNN
+- MLP
+- Transformer
+- Attention
 
-The three prediction tasks are:
+The prediction tasks are:
 
 ```text
-Clear               clear / not clear after the break shot
-Win                 win / not win after the break shot
-Potted Balls        number of balls potted after the break shot
+Clear          clear / not clear after the break shot
+Win            win / not win after the break shot
+Potted Balls   number of balls potted after the break shot
 ```
 
-## Dataset Download
+## Dataset Download Instructions
 
 Official Google Drive folder:
 
@@ -26,7 +26,7 @@ Official Google Drive folder:
 https://drive.google.com/drive/folders/1NBqonYLr_cParMMn4xSeE0KTJNhjeYuG
 ```
 
-After downloading, place the folders as follows:
+Place the downloaded folders as follows:
 
 ```text
 Baseline/code/               official released code
@@ -34,90 +34,43 @@ Dataset/data_layouts/        layout dataset
 Dataset/data _trajectories/  trajectory dataset
 ```
 
-## Preprocessing
-
-This repository uses the clean `paper40` processed file from the docs:
+Recommended processed dataset used by the current scripts:
 
 ```text
-Output/reproduction/billiards_layout_paper40.pt
+Dataset/processed/billiards_layout.pt
 ```
 
-Recommended preprocessing command:
+If the processed file is not available, create it with:
 
 ```bash
-python ClassesData/PreprocessBilliards.py \
-  --root Dataset \
-  --output Output/reproduction/billiards_layout_paper40.pt \
-  --split-method paper40 \
-  --audit-json Output/reproduction/preprocess_paper40_audit.json
+python ClassesData/PreprocessBilliards.py --root Dataset
 ```
 
-## Script Style
+## Environment Setup
 
-The numbered scripts now follow the `DL Class base` style directly:
+Example setup:
 
-- no `argparse`
-- edit the configuration values at the top of each file
-- run the script itself
-- training and evaluation stay separated
-
-## Training Scripts
-
-### 0 - BLFormer Training
-
-Open [0 - BLFormer Training.py](/home/gvlab/Desktop/WANG/MachineLearning/Billiards_Prediction/0%20-%20BLFormer%20Training.py) and edit values such as:
-
-```python
-run_name = "joint_d80_clsmean"
-potted_head = "class"
-use_joint_head = True
-joint_marginal_weight = 0.0
-output_dir = os.path.join("Output", "blformer_paper40", run_name)
+```bash
+conda create -n billiards-prediction python=3.13.14
+conda activate billiards-prediction
+pip install -r requirements.txt
 ```
 
-Then run:
+## How to Train the Model
+
+Edit the configuration block at the top of the corresponding training script, then run the script.
 
 ```bash
 python "0 - BLFormer Training.py"
-```
-
-If you want another doc setting, edit the BLFormer hyperparameter values at the top of the file directly.
-
-### 1 - BLCNN Training
-
-Edit the top of [1 - BLCNN Training.py](/home/gvlab/Desktop/WANG/MachineLearning/Billiards_Prediction/1%20-%20BLCNN%20Training.py), then run:
-
-```bash
 python "1 - BLCNN Training.py"
-```
-
-### 2 - MLP Training
-
-Edit the top of [2 - MLP Training.py](/home/gvlab/Desktop/WANG/MachineLearning/Billiards_Prediction/2%20-%20MLP%20Training.py), then run:
-
-```bash
 python "2 - MLP Training.py"
-```
-
-### 3 - Transformer Training
-
-Edit the top of [3 - Transformer Training.py](/home/gvlab/Desktop/WANG/MachineLearning/Billiards_Prediction/3%20-%20Transformer%20Training.py), then run:
-
-```bash
 python "3 - Transformer Training.py"
-```
-
-### 4 - Attention Training
-
-Edit the top of [4 - Attention Training.py](/home/gvlab/Desktop/WANG/MachineLearning/Billiards_Prediction/4%20-%20Attention%20Training.py), then run:
-
-```bash
 python "4 - Attention Training.py"
 ```
 
-## Evaluation Scripts
+## How to Run Inference / Evaluation
 
-Each evaluation file also uses top-of-file configuration. Set `checkpoint_path`, `output_dir`, `split`, and related values in the script, then run it.
+Edit the configuration block at the top of the corresponding evaluation script, then run the script.
 
 ```bash
 python "0 - BLFormer Evaluation.py"
@@ -127,9 +80,9 @@ python "3 - Transformer Evaluation.py"
 python "4 - Attention Evaluation.py"
 ```
 
-## Saved Outputs
+## Expected Output / Results
 
-Training scripts save files such as:
+Training scripts save outputs such as:
 
 ```text
 *.pt
@@ -138,16 +91,16 @@ Training scripts save files such as:
 *_training_summary.json
 ```
 
-Evaluation scripts save files such as:
+Evaluation scripts save outputs such as:
 
 ```text
 *_evaluation/<split>_metrics.json
 *_evaluation/<split>_predictions.csv
 ```
 
-## Reference Results From The Docs
+Reference results from the current docs:
 
-### Clean `paper40` baseline reproduction
+### Clean baseline reproduction
 
 | Model | Setting | clear | win | potted_after_break |
 |---|---|---:|---:|---:|
@@ -158,32 +111,6 @@ Evaluation scripts save files such as:
 
 ### Current BLFormer main result
 
-| Experiment | clear | win | potted_after_break |
-|---|---:|---:|---:|
-| `joint_d80_clsmean` | 71.391755 | 70.189005 | 65.378004 |
-
-## Project Structure
-
-```text
-├── readme.md
-├── requirements.txt
-├── student_information.txt
-├── download_official_billiards.py
-├── 0 - BLFormer Training.py
-├── 0 - BLFormer Evaluation.py
-├── 1 - BLCNN Training.py
-├── 1 - BLCNN Evaluation.py
-├── 2 - MLP Training.py
-├── 2 - MLP Evaluation.py
-├── 3 - Transformer Training.py
-├── 3 - Transformer Evaluation.py
-├── 4 - Attention Training.py
-├── 4 - Attention Evaluation.py
-├── ClassesData/
-├── ClassesML/
-├── Utilities/
-├── Doc/
-├── Dataset/
-├── Baseline/
-└── Output/
-```
+| Model | Setting | clear | win | potted_after_break |
+|---|---|---:|---:|---:|
+| BLFormer | `joint_d80_clsmean` | 71.391755 | 70.189005 | 65.378004 |
