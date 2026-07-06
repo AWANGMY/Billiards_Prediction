@@ -68,9 +68,11 @@ The numbered scripts now follow the `DL Class base` style directly:
 Open [0 - BLFormer Training.py](/home/gvlab/Desktop/WANG/MachineLearning/Billiards_Prediction/0%20-%20BLFormer%20Training.py) and edit values such as:
 
 ```python
-experiment = "joint_d80_clsmean"
-processed_path = os.path.join("Output", "reproduction", "billiards_layout_paper40.pt")
-output_dir = os.path.join("Output", "blformer_paper40", experiment)
+run_name = "joint_d80_clsmean"
+potted_head = "class"
+use_joint_head = True
+joint_marginal_weight = 0.0
+output_dir = os.path.join("Output", "blformer_paper40", run_name)
 ```
 
 Then run:
@@ -79,11 +81,7 @@ Then run:
 python "0 - BLFormer Training.py"
 ```
 
-Supported doc experiments kept in the file:
-
-- `joint_d80_clsmean`
-- `joint_d80_clsmean_marg0.5`
-- `hybrid_d80_clsmean_ord0.25`
+If you want another doc setting, edit the BLFormer hyperparameter values at the top of the file directly.
 
 ### 1 - BLCNN Training
 

@@ -13,8 +13,8 @@ device = Utilities.resolve_device(allow_cpu=True)
 path_parent_project = os.getcwd()
 dataset_root = os.path.join(path_parent_project, "Dataset")
 processed_path = os.path.join("Output", "reproduction", "billiards_layout_paper40.pt")
-experiment = "joint_d80_clsmean"
-output_dir = os.path.join("Output", "blformer_paper40", experiment)
+run_name = "joint_d80_clsmean"
+output_dir = os.path.join("Output", "blformer_paper40", run_name)
 seed = 123
 batch_size = 64
 num_workers = 0
@@ -22,6 +22,10 @@ epochs = 200
 learning_rate = 3e-4
 weight_decay = 1e-2
 augment_train = True
+potted_head = "class"
+use_joint_head = True
+joint_marginal_weight = 0.0
+potted_ordinal_weight = 0.25
 
 Utilities.set_seed(seed)
 
@@ -67,22 +71,11 @@ hyperparameters = {
     "clear_weight": 1.0,
     "win_weight": 1.0,
     "potted_weight": 1.0,
+    "potted_head": potted_head,
+    "use_joint_head": use_joint_head,
+    "joint_marginal_weight": joint_marginal_weight,
+    "potted_ordinal_weight": potted_ordinal_weight,
 }
-
-if experiment == "joint_d80_clsmean":
-    hyperparameters["potted_head"] = "class"
-    hyperparameters["use_joint_head"] = True
-    hyperparameters["joint_marginal_weight"] = 0.0
-elif experiment == "joint_d80_clsmean_marg0.5":
-    hyperparameters["potted_head"] = "class"
-    hyperparameters["use_joint_head"] = True
-    hyperparameters["joint_marginal_weight"] = 0.5
-elif experiment == "hybrid_d80_clsmean_ord0.25":
-    hyperparameters["potted_head"] = "hybrid"
-    hyperparameters["use_joint_head"] = False
-    hyperparameters["potted_ordinal_weight"] = 0.25
-else:
-    raise ValueError("Unknown experiment: " + str(experiment))
 
 model = BLFormer(hyperparameters=hyperparameters).to(device)
 scope = ScopeBLFormer(model, hyperparameters)
@@ -95,9 +88,9 @@ trainer.run()
 
 train_metrics, _ = trainer.evaluate(train_eval_loader)
 
-checkpoint_path = os.path.join(output_dir, "BLFormer_" + experiment + ".pt")
-history_path = os.path.join(output_dir, "BLFormer_" + experiment + "_history.csv")
-summary_path = os.path.join(output_dir, "BLFormer_" + experiment + "_train.json")
+checkpoint_path = os.path.join(output_dir, "BLFormer_" + run_name + ".pt")
+history_path = os.path.join(output_dir, "BLFormer_" + run_name + "_history.csv")
+summary_path = os.path.join(output_dir, "BLFormer_" + run_name + "_train.json")
 
 torch.save(
     {
@@ -108,7 +101,7 @@ torch.save(
         "hyperparameters": hyperparameters,
         "metadata": {
             "model": "BLFormer",
-            "experiment": experiment,
+            "experiment": run_name,
             "protocol": "paper40_clean",
             "seed": seed,
             "splits": splits,
@@ -130,7 +123,7 @@ Utilities.write_json(
     summary_path,
     {
         "model": "BLFormer",
-        "experiment": experiment,
+        "experiment": run_name,
         "protocol": "paper40_clean",
         "seed": seed,
         "epochs": epochs,
@@ -154,6 +147,6 @@ Utilities.write_json(
 
 print("device:", device)
 print("processed_path:", processed_path)
-print("split_sizes:", {"train": len(splits["train"]), "test": len(splits["test"])} )
+print("split_sizes:", {"train": len(splits["train"]), "test": len(splits["test"])})
 print("checkpoint_path:", checkpoint_path)
 print("summary_path:", summary_path)
