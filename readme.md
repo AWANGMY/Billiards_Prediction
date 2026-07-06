@@ -2,11 +2,13 @@
 
 ## Project Objective
 
-This project studies break-shot outcome prediction in billiards. The main goals are:
+This project studies break-shot outcome prediction in billiards. The repository keeps five model entry points:
 
-1. Reproduce the prediction tasks from the paper `On Predicting and Generating a Good Break Shot in Billiards Sports`.
-2. Compare several models, including BLCNN, MLP, Transformer, Spatial Attention, and BLFormer.
-3. Analyze the gap between reproduced results and the results reported in the papers.
+1. `0 - BLFormer`
+2. `1 - BLCNN`
+3. `2 - MLP`
+4. `3 - Transformer`
+5. `4 - Attention`
 
 The three prediction tasks are:
 
@@ -16,7 +18,7 @@ Win                 win / not win after the break shot
 Potted Balls        number of balls potted after the break shot
 ```
 
-## Dataset Download Instructions
+## Dataset Download
 
 Official Google Drive folder:
 
@@ -24,11 +26,7 @@ Official Google Drive folder:
 https://drive.google.com/drive/folders/1NBqonYLr_cParMMn4xSeE0KTJNhjeYuG
 ```
 
-You can download the data in either of the following ways.
-
-### Option 1: Manual Download
-
-Place the downloaded folders into the project as follows:
+After downloading, place the folders as follows:
 
 ```text
 Baseline/code/               official released code
@@ -36,27 +34,25 @@ Dataset/data_layouts/        layout dataset
 Dataset/data _trajectories/  trajectory dataset
 ```
 
-If needed, also create the output folders:
+## Preprocessing
+
+This repository uses the clean `paper40` processed file from the docs:
 
 ```text
-Output/images/
-Output/results/
+Output/reproduction/billiards_layout_paper40.pt
 ```
 
-
-### Preprocessing
-
-After the raw dataset is placed in the correct folders, preprocess it with:
+Recommended preprocessing command:
 
 ```bash
-python ClassesData/PreprocessBilliards.py --root Dataset
+python ClassesData/PreprocessBilliards.py \
+  --root Dataset \
+  --output Output/reproduction/billiards_layout_paper40.pt \
+  --split-method paper40 \
+  --audit-json Output/reproduction/preprocess_paper40_audit.json
 ```
 
-The processed file is expected at:
-
-```text
-Dataset/processed/billiards_layout.pt
-```
+The numbered training and evaluation scripts read the stored `split_indices` from this processed file directly.
 
 ## Environment Setup
 
@@ -65,33 +61,174 @@ Example setup:
 ```bash
 conda create -n billiards-prediction python=3.13.14
 conda activate billiards-prediction
-pip install torch==2.11.0 torchvision==0.26.0 numpy==2.4.4 matplotlib==3.10.8 scikit-learn==1.8.0 seaborn==0.13.2
+pip install -r requirements.txt
 ```
 
-The same information is also recorded in `requirements.txt`.
+## Training Scripts
 
-## How to Train the Model
+The repository now follows the `DL Class base` style more closely:
 
-To be completed.
+- each model has one training script and one evaluation script
+- training only trains and saves checkpoints / logs
+- evaluation only loads a saved checkpoint and reports metrics / predictions
 
-## How to Run Inference / Evaluation
+### 0 - BLFormer Training
 
-To be completed.
+Recommended main result from the docs:
 
-## Expected Output / Results
+```bash
+python "0 - BLFormer Training.py" \
+  --processed-path Output/reproduction/billiards_layout_paper40.pt \
+  --experiment joint_d80_clsmean
+```
 
-To be completed.
+Independent-head baseline from the docs:
+
+```bash
+python "0 - BLFormer Training.py" \
+  --processed-path Output/reproduction/billiards_layout_paper40.pt \
+  --experiment hybrid_d80_clsmean_ord0.25
+```
+
+Optional marginal-loss variant:
+
+```bash
+python "0 - BLFormer Training.py" \
+  --processed-path Output/reproduction/billiards_layout_paper40.pt \
+  --experiment joint_d80_clsmean_marg0.5
+```
+
+### 1 - BLCNN Training
+
+```bash
+python "1 - BLCNN Training.py" \
+  --processed-path Output/reproduction/billiards_layout_paper40.pt \
+  --weight-decay 0.0001
+```
+
+### 2 - MLP Training
+
+```bash
+python "2 - MLP Training.py" \
+  --processed-path Output/reproduction/billiards_layout_paper40.pt \
+  --weight-decay 0.001
+```
+
+### 3 - Transformer Training
+
+```bash
+python "3 - Transformer Training.py" \
+  --processed-path Output/reproduction/billiards_layout_paper40.pt \
+  --weight-decay 0.001
+```
+
+### 4 - Attention Training
+
+```bash
+python "4 - Attention Training.py" \
+  --processed-path Output/reproduction/billiards_layout_paper40.pt \
+  --weight-decay 0.001
+```
+
+## Evaluation Scripts
+
+### 0 - BLFormer Evaluation
+
+```bash
+python "0 - BLFormer Evaluation.py" \
+  --checkpoint-path Output/blformer_paper40/joint_d80_clsmean/BLFormer_joint_d80_clsmean.pt \
+  --processed-path Output/reproduction/billiards_layout_paper40.pt \
+  --split test
+```
+
+### 1 - BLCNN Evaluation
+
+```bash
+python "1 - BLCNN Evaluation.py" \
+  --checkpoint-path Output/reproduction/formal/paper40_clean_wd0.0001/BLCNN_clear.pt \
+  --processed-path Output/reproduction/billiards_layout_paper40.pt \
+  --split test
+```
+
+### 2 - MLP Evaluation
+
+```bash
+python "2 - MLP Evaluation.py" \
+  --checkpoint-path Output/reproduction/formal_other_methods/paper40_clean_wd0.001/MLP_clear.pt \
+  --processed-path Output/reproduction/billiards_layout_paper40.pt \
+  --split test
+```
+
+### 3 - Transformer Evaluation
+
+```bash
+python "3 - Transformer Evaluation.py" \
+  --checkpoint-path Output/reproduction/formal_other_methods/paper40_clean_wd0.001/Transformer_clear.pt \
+  --processed-path Output/reproduction/billiards_layout_paper40.pt \
+  --split test
+```
+
+### 4 - Attention Evaluation
+
+```bash
+python "4 - Attention Evaluation.py" \
+  --checkpoint-path Output/reproduction/formal_other_methods/paper40_clean_wd0.001/Attention_clear.pt \
+  --processed-path Output/reproduction/billiards_layout_paper40.pt \
+  --split test
+```
+
+## Saved Outputs
+
+Training scripts save files such as:
+
+```text
+*.pt
+*_history.csv
+*_train.json
+*_training_summary.json
+```
+
+Evaluation scripts save files such as:
+
+```text
+*_evaluation/<split>_metrics.json
+*_evaluation/<split>_predictions.csv
+```
+
+## Reference Results From The Docs
+
+### Clean `paper40` baseline reproduction
+
+| Model | Setting | clear | win | potted_after_break |
+|---|---|---:|---:|---:|
+| BLCNN | `weight_decay=0.0001` | 71.477663 | 66.752577 | 61.254296 |
+| MLP | `weight_decay=0.001` | 69.158076 | 67.268041 | 55.068729 |
+| Transformer | `weight_decay=0.001` | 65.807560 | 66.408935 | 40.120275 |
+| Attention | `weight_decay=0.001` | 65.893471 | 66.408935 | 48.024055 |
+
+### Current BLFormer main result
+
+| Experiment | clear | win | potted_after_break |
+|---|---:|---:|---:|
+| `joint_d80_clsmean` | 71.391755 | 70.189005 | 65.378004 |
 
 ## Project Structure
 
 ```text
 ├── readme.md
 ├── requirements.txt
-├── setup.md
+├── student_information.txt
 ├── download_official_billiards.py
-├── run_blcnn_reproduction.py
-├── run_other_methods_reproduction.py
-├── run_blformer.py
+├── 0 - BLFormer Training.py
+├── 0 - BLFormer Evaluation.py
+├── 1 - BLCNN Training.py
+├── 1 - BLCNN Evaluation.py
+├── 2 - MLP Training.py
+├── 2 - MLP Evaluation.py
+├── 3 - Transformer Training.py
+├── 3 - Transformer Evaluation.py
+├── 4 - Attention Training.py
+├── 4 - Attention Evaluation.py
 ├── ClassesData/
 ├── ClassesML/
 ├── Utilities/

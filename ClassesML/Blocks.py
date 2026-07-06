@@ -1,7 +1,8 @@
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
 
 
 class DenseBlock(nn.Module):
@@ -165,5 +166,88 @@ class SpatialAttentionBlock(nn.Module):
         self.attention_weights = weights
         x = x * weights
         x = x.sum(dim=1)
+
+        return x
+
+
+class GeometricMultiHeadAttentionBlock(nn.Module):
+
+    def __init__(self, d_model, num_heads, dropout_rate=0.1):
+
+        super(GeometricMultiHeadAttentionBlock, self).__init__()
+
+        if d_model % num_heads != 0:
+            raise ValueError("d_model must be divisible by num_heads")
+
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.head_dim = d_model // num_heads
+        self.scale = math.sqrt(self.head_dim)
+
+        self.qkv_layer = nn.Linear(d_model, d_model * 3)
+        self.output_layer = nn.Linear(d_model, d_model)
+        self.dropout_layer = nn.Dropout(dropout_rate)
+        self.attention_weights = None
+
+    def forward(self, x, attention_bias, attention_mask):
+
+        batch_size, seq_len, _ = x.shape
+
+        qkv = self.qkv_layer(x)
+        qkv = qkv.reshape(batch_size, seq_len, 3, self.num_heads, self.head_dim)
+        qkv = qkv.permute(2, 0, 3, 1, 4)
+        query, key, value = qkv[0], qkv[1], qkv[2]
+
+        attention_logits = torch.matmul(query, key.transpose(-2, -1)) / self.scale
+        attention_logits = attention_logits + attention_bias
+
+        if attention_mask is not None:
+            key_mask = ~attention_mask[:, None, None, :]
+            attention_logits = attention_logits.masked_fill(key_mask, -1.0e9)
+
+        attention = torch.softmax(attention_logits, dim=-1)
+        attention = self.dropout_layer(attention)
+        self.attention_weights = attention.detach()
+
+        context = torch.matmul(attention, value)
+        context = context.transpose(1, 2).contiguous()
+        context = context.reshape(batch_size, seq_len, self.d_model)
+
+        return self.output_layer(context)
+
+
+class BLFormerEncoderBlock(nn.Module):
+
+    def __init__(self, d_model, num_heads, ffn_dim, dropout_rate=0.1):
+
+        super(BLFormerEncoderBlock, self).__init__()
+
+        self.norm_layer1 = nn.LayerNorm(d_model)
+        self.norm_layer2 = nn.LayerNorm(d_model)
+        self.attention_layer = GeometricMultiHeadAttentionBlock(
+            d_model=d_model,
+            num_heads=num_heads,
+            dropout_rate=dropout_rate,
+        )
+        self.feed_forward = nn.Sequential(
+            nn.Linear(d_model, ffn_dim),
+            nn.GELU(),
+            nn.Dropout(dropout_rate),
+            nn.Linear(ffn_dim, d_model),
+        )
+        self.dropout_layer1 = nn.Dropout(dropout_rate)
+        self.dropout_layer2 = nn.Dropout(dropout_rate)
+
+    def forward(self, x, attention_bias, attention_mask):
+
+        attention_out = self.attention_layer(
+            self.norm_layer1(x),
+            attention_bias,
+            attention_mask,
+        )
+        x = x + self.dropout_layer1(attention_out)
+
+        feed_forward_out = self.feed_forward(self.norm_layer2(x))
+        x = x + self.dropout_layer2(feed_forward_out)
 
         return x

@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from ClassesML.Block import DenseBlock
+from ClassesML.Blocks import DenseBlock
 from Utilities.Utilities import Utilities
 
 

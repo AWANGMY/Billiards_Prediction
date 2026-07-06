@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from ClassesML.Block import BallProjectionBlock, DenseBlock, PositionalEncoding, TransformerEncoderBlock, SpatialAttentionBlock
+from ClassesML.Blocks import BallProjectionBlock, DenseBlock, PositionalEncoding, TransformerEncoderBlock, SpatialAttentionBlock
 from Utilities.Utilities import Utilities
 
 
