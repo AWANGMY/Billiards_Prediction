@@ -173,58 +173,10 @@ def min_ball_to_pocket_angle_xy(incoming_start, object_ball):
     return best_angle
 
 
-def point_segment_distance(point, start, end):
-
-    segment = end - start
-    segment_length_squared = torch.dot(segment, segment)
-
-    if float(segment_length_squared.item()) == 0.0:
-        return float(torch.linalg.norm(point - start).item())
-
-    t = torch.dot(point - start, segment) / segment_length_squared
-    t = torch.clamp(t, 0.0, 1.0)
-    projection = start + t * segment
-
-    return float(torch.linalg.norm(point - projection).item())
-
-
-def path_blocked(start, end, active_ball_positions, excluded_ball_indices):
-
-    segment = end - start
-    if float(torch.linalg.norm(segment).item()) == 0.0:
-        return 0.0
-
-    for ball_index, ball_position in enumerate(active_ball_positions):
-        if ball_index in excluded_ball_indices:
-            continue
-
-        segment_length_squared = torch.dot(segment, segment)
-        t = torch.dot(ball_position - start, segment) / segment_length_squared
-        if float(t.item()) <= 0.0 or float(t.item()) >= 1.0:
-            continue
-
-        distance = point_segment_distance(ball_position, start, end)
-        if distance < 2.0 * BALL_RADIUS:
-            return 1.0
-
-    return 0.0
-
-
-def min_ball_to_pocket_angle(incoming_start, object_ball):
-
-    incoming_vector = object_ball - incoming_start
-    best_angle = 180.0
-
-    for pocket_position in POCKETS:
-        outgoing_vector = pocket_position - object_ball
-        best_angle = min(best_angle, angle_between(incoming_vector, outgoing_vector))
-
-    return best_angle
-
-
 def edge_type(token_type_i, token_type_j):
 
-    if token_type_i in [TOKEN_CLS, TOKEN_PAD] or token_type_j in [TOKEN_CLS, TOKEN_PAD]:
+    if token_type_i in [TOKEN_CLS, TOKEN_PAD] or token_type_j in [TOKEN_CLS,
+                                                                  TOKEN_PAD]:
         return EDGE_CLS_OR_PAD
     if token_type_i == TOKEN_BALL and token_type_j == TOKEN_BALL:
         return EDGE_BALL_BALL
@@ -243,7 +195,8 @@ def build_pair_features(token_type_ids, physical_coords, ball_token_positions):
     pair_features = [[[0.0] * PAIR_FEATURE_DIM for _ in range(length)]
                      for _ in range(length)]
 
-    active_ball_positions = [coord_list[token_index] for token_index in ball_token_list]
+    active_ball_positions = [coord_list[token_index]
+                             for token_index in ball_token_list]
     token_to_active_ball = {}
     for active_index, token_index in enumerate(ball_token_list):
         token_to_active_ball[int(token_index)] = active_index
@@ -269,9 +222,11 @@ def build_pair_features(token_type_ids, physical_coords, ball_token_positions):
             pair_features[i][j][2] = displacement_y / TABLE_HEIGHT
 
             if current_edge_type == EDGE_BALL_BALL:
-                pair_features[i][j][3] = min_ball_to_pocket_angle_xy(start, end) / 180.0
+                pair_features[i][j][3] = (
+                    min_ball_to_pocket_angle_xy(start, end) / 180.0)
                 excluded = {token_to_active_ball[i], token_to_active_ball[j]}
-                pair_features[i][j][4] = path_blocked_xy(start, end, active_ball_positions,
+                pair_features[i][j][4] = path_blocked_xy(start, end,
+                                                          active_ball_positions,
                                                           excluded)
             elif current_edge_type == EDGE_BALL_POCKET:
                 if type_i == TOKEN_BALL:
@@ -285,7 +240,8 @@ def build_pair_features(token_type_ids, physical_coords, ball_token_positions):
 
                 pair_features[i][j][3] = (
                     pocket_cushion_angle_xy(ball_position, pocket_position) / 90.0)
-                pair_features[i][j][4] = path_blocked_xy(ball_position, pocket_position,
+                pair_features[i][j][4] = path_blocked_xy(ball_position,
+                                                          pocket_position,
                                                           active_ball_positions,
                                                           excluded)
 
@@ -299,7 +255,8 @@ class BLFormerDataset(Dataset):
         super(BLFormerDataset, self).__init__()
 
         self.data = data
-        self.indices = indices.long() if isinstance(indices, torch.Tensor) else torch.tensor(indices, dtype=torch.long)
+        self.indices = (indices.long() if isinstance(indices, torch.Tensor)
+                        else torch.tensor(indices, dtype=torch.long))
         self.augment = augment
 
         for target in ['clear', 'win', 'potted_after_break']:
@@ -318,14 +275,11 @@ class BLFormerDataset(Dataset):
         if self.augment:
             layout = self._augment_layout(layout)
 
-        paper_layout = None
-        if 'x_paper' in self.data:
-            paper_layout = self.data['x_paper'][data_idx].clone().long()
-
-        sample = self._layout_to_tokens(layout, paper_layout)
+        sample = self._layout_to_tokens(layout)
         sample['clear'] = self.data['clear'][data_idx].clone().long()
         sample['win'] = self.data['win'][data_idx].clone().long()
-        sample['potted_after_break'] = self.data['potted_after_break'][data_idx].clone().long()
+        sample['potted_after_break'] = (
+            self.data['potted_after_break'][data_idx].clone().long())
         sample['sample_index'] = torch.tensor(data_idx, dtype=torch.long)
 
         return sample
@@ -339,12 +293,11 @@ class BLFormerDataset(Dataset):
 
         return layout
 
-    def _layout_to_tokens(self, layout, paper_layout=None):
+    def _layout_to_tokens(self, layout):
 
         token_type_ids = [TOKEN_CLS]
         coords = [[0.0, 0.0]]
         ball_ids = [0]
-        paper_features = [[0] * 27]
         ball_token_positions = []
 
         for ball_index in range(layout.shape[0]):
@@ -356,22 +309,16 @@ class BLFormerDataset(Dataset):
             coords.append([float(layout[ball_index, 0].item()),
                            float(layout[ball_index, 1].item())])
             ball_ids.append(ball_index + 1)
-            if paper_layout is None:
-                paper_features.append([0] * 27)
-            else:
-                paper_features.append(paper_layout[ball_index].tolist())
 
         for pocket_position in POCKETS:
             token_type_ids.append(TOKEN_POCKET)
             coords.append([float((pocket_position[0] / TABLE_WIDTH).item()),
                            float((pocket_position[1] / TABLE_HEIGHT).item())])
             ball_ids.append(0)
-            paper_features.append([0] * 27)
 
         token_type_ids = torch.tensor(token_type_ids, dtype=torch.long)
         coords = torch.tensor(coords, dtype=torch.float32)
         ball_ids = torch.tensor(ball_ids, dtype=torch.long)
-        paper_features = torch.tensor(paper_features, dtype=torch.long)
         physical_coords = coords.clone()
         physical_coords[:, 0] = physical_coords[:, 0] * TABLE_WIDTH
         physical_coords[:, 1] = physical_coords[:, 1] * TABLE_HEIGHT
@@ -382,7 +329,6 @@ class BLFormerDataset(Dataset):
         return {'token_type_ids': token_type_ids,
                 'coords': coords,
                 'ball_ids': ball_ids,
-                'paper_features': paper_features,
                 'attention_mask': torch.ones(len(token_type_ids), dtype=torch.bool),
                 'pair_features': pair_features}
 
@@ -395,7 +341,6 @@ def blformer_collate(samples):
     token_type_ids = torch.full((batch_size, max_length), TOKEN_PAD, dtype=torch.long)
     coords = torch.zeros(batch_size, max_length, 2, dtype=torch.float32)
     ball_ids = torch.zeros(batch_size, max_length, dtype=torch.long)
-    paper_features = torch.zeros(batch_size, max_length, 27, dtype=torch.long)
     attention_mask = torch.zeros(batch_size, max_length, dtype=torch.bool)
     pair_features = torch.zeros(batch_size, max_length, max_length,
                                 PAIR_FEATURE_DIM, dtype=torch.float32)
@@ -411,7 +356,6 @@ def blformer_collate(samples):
         token_type_ids[batch_index, :length] = sample['token_type_ids']
         coords[batch_index, :length] = sample['coords']
         ball_ids[batch_index, :length] = sample['ball_ids']
-        paper_features[batch_index, :length] = sample['paper_features']
         attention_mask[batch_index, :length] = sample['attention_mask']
         pair_features[batch_index, :length, :length] = sample['pair_features']
         clear[batch_index] = sample['clear']
@@ -422,7 +366,6 @@ def blformer_collate(samples):
     return {'token_type_ids': token_type_ids,
             'coords': coords,
             'ball_ids': ball_ids,
-            'paper_features': paper_features,
             'attention_mask': attention_mask,
             'pair_features': pair_features,
             'clear': clear,

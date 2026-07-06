@@ -24,7 +24,8 @@ def parse_args():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--processed-path',
-                        default=os.path.join('Dataset', 'processed', 'billiards_layout.pt'))
+                        default=os.path.join('Dataset', 'processed',
+                                             'billiards_layout.pt'))
     parser.add_argument('--output-dir',
                         default=os.path.join('Output', 'blformer'))
     parser.add_argument('--run-name', default=None)
@@ -61,12 +62,13 @@ def parse_args():
     parser.add_argument('--ffn-dim', type=int, default=128)
     parser.add_argument('--bias-hidden-dim', type=int, default=32)
     parser.add_argument('--pooling', choices=['cls', 'cls_mean'], default='cls')
-    parser.add_argument('--use-paper-features', action='store_true')
+    parser.add_argument('--use-joint-head', action='store_true')
+    parser.add_argument('--joint-marginal-weight', type=float, default=0.0)
 
     parser.add_argument('--search',
-                        choices=['none', 'doc_small', 'paper40_improve',
-                                 'paper40_clear_focus', 'paper40_paper_fusion'],
-                        default='doc_small')
+                        choices=['none', 'paper40_unified_capacity',
+                                 'paper40_joint_head'],
+                        default='none')
     parser.add_argument('--max-trials', type=int, default=None)
     parser.add_argument('--val-ratio', type=float, default=0.15)
     parser.add_argument('--use-stored-val', action='store_true')
@@ -110,12 +112,12 @@ def resolve_device(args):
     if requested_device.type == 'cuda' and not torch.cuda.is_available():
         if args.allow_cpu:
             return torch.device('cpu')
-        raise RuntimeError('CUDA is not available. Run this script on an interact-g GPU node '
-                           'or pass --allow-cpu only for smoke tests.')
+        raise RuntimeError('CUDA is not available. Run on an interact-g GPU node '
+                           'or pass --allow-cpu for smoke tests.')
 
     if requested_device.type == 'cpu' and not args.allow_cpu:
-        raise RuntimeError('CPU execution is disabled by default. Pass --allow-cpu only for '
-                           'smoke tests; formal BLFormer training should use CUDA.')
+        raise RuntimeError('CPU execution is disabled by default. Pass --allow-cpu '
+                           'only for smoke tests.')
 
     return requested_device
 
@@ -149,7 +151,8 @@ def build_splits(data, args):
             raise ValueError('Validation split is empty; increase --val-ratio.')
         val_indices = pool_indices[:val_size]
         train_indices = pool_indices[val_size:]
-        notes = ['re-splits stored train+val with validation ratio ' + str(args.val_ratio),
+        notes = ['re-splits stored train+val with validation ratio ' +
+                 str(args.val_ratio),
                  'uses stored test indices as held-out test set']
 
     if len(train_indices) == 0 or len(val_indices) == 0 or len(test_indices) == 0:
@@ -164,7 +167,8 @@ def build_splits(data, args):
             'notes': notes}
 
 
-def make_loader(data, indices, batch_size, shuffle, augment, seed, num_workers, device):
+def make_loader(data, indices, batch_size, shuffle, augment, seed, num_workers,
+                device):
 
     dataset = BLFormerDataset(data, indices, augment=augment)
     generator = torch.Generator()
@@ -195,12 +199,11 @@ def base_hyperparameters(args, trial_config):
             'num_layers': trial_config.get('num_layers', args.num_layers),
             'ffn_dim': trial_config.get('ffn_dim', args.ffn_dim),
             'dropout_rate': trial_config['dropout_rate'],
-            'bias_hidden_dim': trial_config.get('bias_hidden_dim', args.bias_hidden_dim),
+            'bias_hidden_dim': trial_config.get('bias_hidden_dim',
+                                                args.bias_hidden_dim),
             'pooling': trial_config.get('pooling', args.pooling),
-            'use_paper_features': trial_config.get('use_paper_features',
-                                                   args.use_paper_features),
-            'num_paper_features': 27,
-            'paper_feature_vocab_size': 200,
+            'use_joint_head': trial_config.get('use_joint_head',
+                                               args.use_joint_head),
             'pair_feature_dim': 10,
             'num_token_types': 4,
             'num_ball_ids': 11,
@@ -223,120 +226,48 @@ def trial_configs(args):
             'potted_ce_beta': args.potted_ce_beta,
             'potted_label_smoothing': args.potted_label_smoothing,
             'pooling': args.pooling,
-            'use_paper_features': args.use_paper_features}
+            'use_joint_head': args.use_joint_head,
+            'joint_marginal_weight': args.joint_marginal_weight}
 
     if args.search == 'none':
         configs = [base]
-    elif args.search == 'doc_small':
+    elif args.search == 'paper40_unified_capacity':
         configs = [
-            base,
-            override_trial(base, 'lr_1e-4', learning_rate=1e-4),
-            override_trial(base, 'lr_1e-3', learning_rate=1e-3),
-            override_trial(base, 'dropout_0.05', dropout_rate=0.05),
-            override_trial(base, 'dropout_0.2', dropout_rate=0.2),
-            override_trial(base, 'weight_decay_1e-3', weight_decay=1e-3),
-            override_trial(base, 'potted_weight_0.5', potted_weight=0.5),
-            override_trial(base, 'potted_weight_2.0', potted_weight=2.0),
-            override_trial(base, 'lr_1e-4_dropout_0.2',
-                           learning_rate=1e-4, dropout_rate=0.2),
-            override_trial(base, 'lr_1e-3_dropout_0.2',
-                           learning_rate=1e-3, dropout_rate=0.2),
-            override_trial(base, 'wd_1e-3_dropout_0.05',
-                           weight_decay=1e-3, dropout_rate=0.05),
-            override_trial(base, 'dropout_0.2_potted_weight_2.0',
-                           dropout_rate=0.2, potted_weight=2.0),
-        ]
-    elif args.search == 'paper40_improve':
-        configs = [
-            override_trial(base, 'class_cls_lr3e-4',
-                           potted_head='class'),
-            override_trial(base, 'class_cls_lr1e-4',
-                           potted_head='class', learning_rate=1e-4),
-            override_trial(base, 'class_cls_wd1e-3',
-                           potted_head='class', weight_decay=1e-3),
-            override_trial(base, 'class_cls_smooth0.05',
-                           potted_head='class', potted_label_smoothing=0.05),
-            override_trial(base, 'class_cls_effective',
-                           potted_head='class', potted_ce_weighting='effective'),
-            override_trial(base, 'class_clsmean_lr3e-4',
-                           potted_head='class', pooling='cls_mean'),
-            override_trial(base, 'class_clsmean_lr1e-4',
-                           potted_head='class', pooling='cls_mean',
-                           learning_rate=1e-4),
-            override_trial(base, 'hybrid_cls_lr3e-4',
-                           potted_head='hybrid'),
-            override_trial(base, 'hybrid_cls_ord0.25',
-                           potted_head='hybrid', potted_ordinal_weight=0.25),
-            override_trial(base, 'hybrid_clsmean_ord0.25',
+            override_trial(base, 'hybrid_d64_clsmean_ord0.25',
                            potted_head='hybrid', pooling='cls_mean',
                            potted_ordinal_weight=0.25),
-            override_trial(base, 'class_d96_clsmean',
-                           potted_head='class', pooling='cls_mean',
-                           d_model=96, ffn_dim=192),
-            override_trial(base, 'class_d96_clsmean_wd1e-3',
-                           potted_head='class', pooling='cls_mean',
-                           d_model=96, ffn_dim=192, weight_decay=1e-3),
-        ]
-    elif args.search == 'paper40_clear_focus':
-        configs = [
-            override_trial(base, 'class_clsmean_clear1.5',
-                           potted_head='class', pooling='cls_mean',
-                           clear_weight=1.5),
-            override_trial(base, 'class_clsmean_clear2',
-                           potted_head='class', pooling='cls_mean',
-                           clear_weight=2.0),
-            override_trial(base, 'class_clsmean_clear3',
-                           potted_head='class', pooling='cls_mean',
-                           clear_weight=3.0),
-            override_trial(base, 'class_clsmean_clear4',
-                           potted_head='class', pooling='cls_mean',
-                           clear_weight=4.0),
-            override_trial(base, 'class_clsmean_clear2_pot0.75',
-                           potted_head='class', pooling='cls_mean',
-                           clear_weight=2.0, potted_weight=0.75),
-            override_trial(base, 'class_clsmean_clear3_pot0.75',
-                           potted_head='class', pooling='cls_mean',
-                           clear_weight=3.0, potted_weight=0.75),
-            override_trial(base, 'class_clsmean_clear2_lr1e-4',
-                           potted_head='class', pooling='cls_mean',
-                           clear_weight=2.0, learning_rate=1e-4),
-            override_trial(base, 'hybrid_clsmean_clear2_ord0.25',
+            override_trial(base, 'hybrid_d80_clsmean_ord0.25',
                            potted_head='hybrid', pooling='cls_mean',
-                           clear_weight=2.0, potted_ordinal_weight=0.25),
-            override_trial(base, 'class_d96_clsmean_clear2',
+                           potted_ordinal_weight=0.25,
+                           d_model=80, ffn_dim=160),
+            override_trial(base, 'hybrid_d88_clsmean_ord0.25',
+                           potted_head='hybrid', pooling='cls_mean',
+                           potted_ordinal_weight=0.25,
+                           d_model=88, ffn_dim=176),
+        ]
+    elif args.search == 'paper40_joint_head':
+        configs = [
+            override_trial(base, 'joint_d64_clsmean',
                            potted_head='class', pooling='cls_mean',
-                           d_model=96, ffn_dim=192, clear_weight=2.0),
-            override_trial(base, 'class_d96_clsmean_clear3',
+                           use_joint_head=True,
+                           joint_marginal_weight=0.0),
+            override_trial(base, 'joint_d64_clsmean_marg0.5',
                            potted_head='class', pooling='cls_mean',
-                           d_model=96, ffn_dim=192, clear_weight=3.0),
+                           use_joint_head=True,
+                           joint_marginal_weight=0.5),
+            override_trial(base, 'joint_d80_clsmean',
+                           potted_head='class', pooling='cls_mean',
+                           use_joint_head=True,
+                           joint_marginal_weight=0.0,
+                           d_model=80, ffn_dim=160),
+            override_trial(base, 'joint_d80_clsmean_marg0.5',
+                           potted_head='class', pooling='cls_mean',
+                           use_joint_head=True,
+                           joint_marginal_weight=0.5,
+                           d_model=80, ffn_dim=160),
         ]
     else:
-        configs = [
-            override_trial(base, 'paper_class_cls',
-                           potted_head='class', use_paper_features=True),
-            override_trial(base, 'paper_class_clsmean',
-                           potted_head='class', pooling='cls_mean',
-                           use_paper_features=True),
-            override_trial(base, 'paper_class_clsmean_clear1.5',
-                           potted_head='class', pooling='cls_mean',
-                           use_paper_features=True, clear_weight=1.5),
-            override_trial(base, 'paper_class_clsmean_clear2',
-                           potted_head='class', pooling='cls_mean',
-                           use_paper_features=True, clear_weight=2.0),
-            override_trial(base, 'paper_hybrid_clsmean_ord0.25',
-                           potted_head='hybrid', pooling='cls_mean',
-                           use_paper_features=True, potted_ordinal_weight=0.25),
-            override_trial(base, 'paper_hybrid_clsmean_clear1.5',
-                           potted_head='hybrid', pooling='cls_mean',
-                           use_paper_features=True, clear_weight=1.5,
-                           potted_ordinal_weight=0.25),
-            override_trial(base, 'paper_class_clsmean_wd1e-3',
-                           potted_head='class', pooling='cls_mean',
-                           use_paper_features=True, weight_decay=1e-3),
-            override_trial(base, 'paper_class_d96_clsmean',
-                           potted_head='class', pooling='cls_mean',
-                           use_paper_features=True, d_model=96, ffn_dim=192),
-        ]
+        raise ValueError('Unknown search: ' + str(args.search))
 
     if args.max_trials is not None:
         configs = configs[:args.max_trials]
@@ -388,17 +319,17 @@ def compute_loss(outputs, batch, trial_config, loss_config):
                                                     clear_target)
     win_loss = F.binary_cross_entropy_with_logits(outputs['win_logit'],
                                                   win_target)
-    potted_head = trial_config['potted_head']
     ordinal_loss = F.binary_cross_entropy_with_logits(outputs['potted_logits'],
                                                       potted_target,
                                                       reduction='none')
     ordinal_loss = ordinal_loss.sum(dim=1).mean()
-
     class_loss = F.cross_entropy(outputs['potted_class_logits'],
                                  batch['potted_after_break'],
                                  weight=loss_config['potted_class_weights'],
-                                 label_smoothing=trial_config['potted_label_smoothing'])
+                                 label_smoothing=trial_config[
+                                     'potted_label_smoothing'])
 
+    potted_head = trial_config['potted_head']
     if potted_head == 'ordinal':
         potted_loss = ordinal_loss
     elif potted_head == 'class':
@@ -411,13 +342,24 @@ def compute_loss(outputs, batch, trial_config, loss_config):
     total_loss = (trial_config['clear_weight'] * clear_loss +
                   trial_config['win_weight'] * win_loss +
                   trial_config['potted_weight'] * potted_loss)
+    joint_loss = total_loss.new_tensor(0.0)
+
+    if trial_config.get('use_joint_head', False):
+        joint_target = (batch['clear'].long() * 20 +
+                        batch['win'].long() * 10 +
+                        batch['potted_after_break'].long())
+        joint_loss = F.cross_entropy(outputs['joint_logits'], joint_target)
+        marginal_loss = (clear_loss + win_loss + class_loss) / 3.0
+        total_loss = joint_loss + (
+            trial_config['joint_marginal_weight'] * marginal_loss)
 
     return {'loss': total_loss,
             'clear_loss': clear_loss.detach(),
             'win_loss': win_loss.detach(),
             'potted_loss': potted_loss.detach(),
             'potted_ordinal_loss': ordinal_loss.detach(),
-            'potted_class_loss': class_loss.detach()}
+            'potted_class_loss': class_loss.detach(),
+            'joint_loss': joint_loss.detach()}
 
 
 def predictions_from_outputs(outputs, potted_head='ordinal'):
@@ -453,7 +395,6 @@ def train_one_epoch(model, loader, optimizer, scheduler, device, trial_config,
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
 
         optimizer.step()
-
         accumulator.update(batch, outputs, losses)
 
     scheduler.step()
@@ -461,7 +402,8 @@ def train_one_epoch(model, loader, optimizer, scheduler, device, trial_config,
     return accumulator.metrics()
 
 
-def evaluate(model, loader, device, trial_config, loss_config, return_predictions=False):
+def evaluate(model, loader, device, trial_config, loss_config,
+             return_predictions=False):
 
     model.eval()
     accumulator = MetricAccumulator(potted_head=trial_config['potted_head'],
@@ -488,7 +430,8 @@ class MetricAccumulator:
                           'win_loss': 0.0,
                           'potted_loss': 0.0,
                           'potted_ordinal_loss': 0.0,
-                          'potted_class_loss': 0.0}
+                          'potted_class_loss': 0.0,
+                          'joint_loss': 0.0}
         self.count = 0
         self.y_true = {task: [] for task in TASKS}
         self.y_pred = {task: [] for task in TASKS}
@@ -567,9 +510,12 @@ def classification_metrics(y_true, y_pred, labels):
 
     for label in labels:
         label_tensor = torch.tensor(label, dtype=torch.long)
-        true_positive = int(((y_true == label_tensor) & (y_pred == label_tensor)).sum().item())
-        false_positive = int(((y_true != label_tensor) & (y_pred == label_tensor)).sum().item())
-        false_negative = int(((y_true == label_tensor) & (y_pred != label_tensor)).sum().item())
+        true_positive = int(((y_true == label_tensor) &
+                             (y_pred == label_tensor)).sum().item())
+        false_positive = int(((y_true != label_tensor) &
+                              (y_pred == label_tensor)).sum().item())
+        false_negative = int(((y_true == label_tensor) &
+                              (y_pred != label_tensor)).sum().item())
 
         precision = safe_divide(true_positive, true_positive + false_positive)
         recall = safe_divide(true_positive, true_positive + false_negative)
@@ -703,7 +649,6 @@ def run_trial(data, splits, args, device, trial_config, trial_index):
     model.load_state_dict(best_state)
     test_metrics = evaluate(model, test_loader, device, trial_config, loss_config,
                             return_predictions=True)
-
     parameter_count = sum([parameter.numel() for parameter in model.parameters()])
 
     summary = {'trial_name': trial_config['trial_name'],
@@ -723,7 +668,8 @@ def run_trial(data, splits, args, device, trial_config, trial_index):
                'potted_ce_beta': trial_config['potted_ce_beta'],
                'potted_label_smoothing': trial_config['potted_label_smoothing'],
                'pooling': trial_config['pooling'],
-               'use_paper_features': trial_config['use_paper_features'],
+               'use_joint_head': trial_config['use_joint_head'],
+               'joint_marginal_weight': trial_config['joint_marginal_weight'],
                'selection_metric': args.selection_metric,
                'best_val_metrics': best_val_metrics,
                'test_metrics': without_predictions(test_metrics),
@@ -736,7 +682,8 @@ def run_trial(data, splits, args, device, trial_config, trial_index):
             'test_predictions': test_metrics['predictions']}
 
 
-def flatten_epoch_metrics(trial_name, epoch, learning_rate, train_metrics, val_metrics):
+def flatten_epoch_metrics(trial_name, epoch, learning_rate, train_metrics,
+                          val_metrics):
 
     row = {'trial_name': trial_name,
            'epoch': epoch,
@@ -751,7 +698,7 @@ def flatten_epoch_metrics(trial_name, epoch, learning_rate, train_metrics, val_m
 def add_flat_metrics(row, prefix, metrics):
 
     for key in ['loss', 'clear_loss', 'win_loss', 'potted_loss',
-                'potted_ordinal_loss', 'potted_class_loss',
+                'potted_ordinal_loss', 'potted_class_loss', 'joint_loss',
                 'mean_macro_f1', 'mean_accuracy',
                 'clean_target_min_margin', 'clean_target_mean_margin']:
         row[prefix + '_' + key] = metrics[key]
@@ -776,7 +723,8 @@ def should_log_epoch(args, epoch):
             (epoch % args.log_every_epochs == 0 or epoch == args.epochs))
 
 
-def format_progress(trial_name, epoch, epochs, train_metrics, val_metrics, best_epoch):
+def format_progress(trial_name, epoch, epochs, train_metrics, val_metrics,
+                    best_epoch):
 
     return (trial_name + ' epoch ' + str(epoch) + '/' + str(epochs) +
             ' train_f1=' + format_float(train_metrics['mean_macro_f1']) +
@@ -889,7 +837,8 @@ def run_fixed_epoch_training(data, splits, args, device, trial_config, epochs):
                                   weight_decay=trial_config['weight_decay'])
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer,
                                                            T_max=max(1, epochs))
-    loss_config = build_loss_config(data, splits['final_train'], trial_config, device)
+    loss_config = build_loss_config(data, splits['final_train'], trial_config,
+                                    device)
 
     final_train_metrics = None
     for epoch in range(1, epochs + 1):
@@ -898,8 +847,10 @@ def run_fixed_epoch_training(data, splits, args, device, trial_config, epochs):
                                               loss_config, args)
         if should_log_epoch(args, epoch):
             print('final_full_train epoch ' + str(epoch) + '/' + str(epochs) +
-                  ' train_acc=' + format_float(final_train_metrics['mean_accuracy']) +
-                  ' train_f1=' + format_float(final_train_metrics['mean_macro_f1']))
+                  ' train_acc=' +
+                  format_float(final_train_metrics['mean_accuracy']) +
+                  ' train_f1=' +
+                  format_float(final_train_metrics['mean_macro_f1']))
 
     test_metrics = evaluate(model, test_loader, device, trial_config, loss_config,
                             return_predictions=True)
@@ -922,7 +873,8 @@ def run_fixed_epoch_training(data, splits, args, device, trial_config, epochs):
                'potted_ce_beta': trial_config['potted_ce_beta'],
                'potted_label_smoothing': trial_config['potted_label_smoothing'],
                'pooling': trial_config['pooling'],
-               'use_paper_features': trial_config['use_paper_features'],
+               'use_joint_head': trial_config['use_joint_head'],
+               'joint_marginal_weight': trial_config['joint_marginal_weight'],
                'train_metrics': final_train_metrics,
                'test_metrics': without_predictions(test_metrics),
                'hyperparameters': hparams}
@@ -930,6 +882,48 @@ def run_fixed_epoch_training(data, splits, args, device, trial_config, epochs):
     return {'summary': summary,
             'state': state,
             'test_predictions': test_metrics['predictions']}
+
+
+def flatten_trial_summary(summary):
+
+    row = {'trial_name': summary['trial_name'],
+           'trial_index': summary['trial_index'],
+           'best_epoch': summary['best_epoch'],
+           'epochs_ran': summary['epochs_ran'],
+           'parameter_count': summary['parameter_count'],
+           'learning_rate': summary['learning_rate'],
+           'weight_decay': summary['weight_decay'],
+           'dropout_rate': summary['dropout_rate'],
+           'clear_weight': summary['clear_weight'],
+           'win_weight': summary['win_weight'],
+           'potted_weight': summary['potted_weight'],
+           'potted_head': summary['potted_head'],
+           'potted_ordinal_weight': summary['potted_ordinal_weight'],
+           'potted_ce_weighting': summary['potted_ce_weighting'],
+           'potted_ce_beta': summary['potted_ce_beta'],
+           'potted_label_smoothing': summary['potted_label_smoothing'],
+           'pooling': summary['pooling'],
+           'use_joint_head': summary['use_joint_head'],
+           'joint_marginal_weight': summary['joint_marginal_weight'],
+           'selection_metric': summary['selection_metric'],
+           'best_val_loss': summary['best_val_metrics']['loss'],
+           'best_val_mean_macro_f1': summary['best_val_metrics']['mean_macro_f1'],
+           'best_val_mean_accuracy': summary['best_val_metrics']['mean_accuracy'],
+           'best_val_clean_target_min_margin': (
+               summary['best_val_metrics']['clean_target_min_margin']),
+           'test_loss': summary['test_metrics']['loss'],
+           'test_mean_macro_f1': summary['test_metrics']['mean_macro_f1'],
+           'test_mean_accuracy': summary['test_metrics']['mean_accuracy'],
+           'test_clean_target_min_margin': (
+               summary['test_metrics']['clean_target_min_margin'])}
+
+    for task in TASKS:
+        row['test_' + task + '_accuracy'] = (
+            summary['test_metrics']['task_metrics'][task]['accuracy'])
+        row['test_' + task + '_macro_f1'] = (
+            summary['test_metrics']['task_metrics'][task]['macro_f1'])
+
+    return row
 
 
 def main():
@@ -985,7 +979,8 @@ def main():
                 'split_notes': splits['notes']},
                validation_checkpoint_path)
 
-    validation_predictions_path = os.path.join(run_dir, 'test_predictions_selected_val.csv')
+    validation_predictions_path = os.path.join(run_dir,
+                                               'test_predictions_selected_val.csv')
     write_csv(validation_predictions_path, best_result['test_predictions'])
 
     final_result = None
@@ -1001,7 +996,8 @@ def main():
                                                 device,
                                                 best_result['trial_config'],
                                                 best_result['summary']['best_epoch'])
-        final_checkpoint_path = os.path.join(run_dir, 'BLFormer_final_full_train.pt')
+        final_checkpoint_path = os.path.join(run_dir,
+                                             'BLFormer_final_full_train.pt')
         torch.save({'model_state_dict': final_result['state'],
                     'hyperparameters': final_result['summary']['hyperparameters'],
                     'trial': final_result['summary'],
@@ -1009,78 +1005,43 @@ def main():
                     'args': vars(args),
                     'split_notes': splits['notes']},
                    final_checkpoint_path)
-        final_predictions_path = os.path.join(run_dir,
-                                              'test_predictions_final_full_train.csv')
+        final_predictions_path = os.path.join(
+            run_dir, 'test_predictions_final_full_train.csv')
         write_csv(final_predictions_path, final_result['test_predictions'])
 
     final_summary = {'best_trial': best_result['summary'],
                      'validation_checkpoint_path': validation_checkpoint_path,
                      'validation_predictions_path': validation_predictions_path,
-                     'final_full_train': None if final_result is None else final_result['summary'],
+                     'final_full_train': (None if final_result is None
+                                          else final_result['summary']),
                      'final_checkpoint_path': final_checkpoint_path,
                      'final_predictions_path': final_predictions_path,
-                     'search_results_path': os.path.join(run_dir, 'search_results.json'),
+                     'search_results_path': os.path.join(run_dir,
+                                                         'search_results.json'),
                      'history_path': os.path.join(run_dir, 'history.csv'),
                      'split_sizes': {name: len(splits[name])
-                                     for name in ['train', 'val', 'final_train', 'test']},
+                                     for name in ['train', 'val',
+                                                  'final_train', 'test']},
                      'split_notes': splits['notes']}
     write_json(os.path.join(run_dir, 'summary.json'), final_summary)
 
     print('best_trial:', best_result['summary']['trial_name'])
     print('best_val_mean_macro_f1:',
-          format_float(best_result['summary']['best_val_metrics']['mean_macro_f1']))
+          format_float(best_result['summary']['best_val_metrics'][
+              'mean_macro_f1']))
     print('selected_val_test_mean_macro_f1:',
           format_float(best_result['summary']['test_metrics']['mean_macro_f1']))
     print('selected_val_test_mean_accuracy:',
           format_float(best_result['summary']['test_metrics']['mean_accuracy']))
     if final_result is not None:
         print('final_full_train_test_mean_macro_f1:',
-              format_float(final_result['summary']['test_metrics']['mean_macro_f1']))
+              format_float(final_result['summary']['test_metrics'][
+                  'mean_macro_f1']))
         print('final_full_train_test_mean_accuracy:',
-              format_float(final_result['summary']['test_metrics']['mean_accuracy']))
+              format_float(final_result['summary']['test_metrics'][
+                  'mean_accuracy']))
     print('checkpoint:', final_checkpoint_path or validation_checkpoint_path)
     print('summary:', os.path.join(run_dir, 'summary.json'))
-
-
-def flatten_trial_summary(summary):
-
-    row = {'trial_name': summary['trial_name'],
-           'trial_index': summary['trial_index'],
-           'best_epoch': summary['best_epoch'],
-           'epochs_ran': summary['epochs_ran'],
-           'parameter_count': summary['parameter_count'],
-           'learning_rate': summary['learning_rate'],
-           'weight_decay': summary['weight_decay'],
-           'dropout_rate': summary['dropout_rate'],
-           'clear_weight': summary['clear_weight'],
-           'win_weight': summary['win_weight'],
-           'potted_weight': summary['potted_weight'],
-           'potted_head': summary['potted_head'],
-           'potted_ordinal_weight': summary['potted_ordinal_weight'],
-           'potted_ce_weighting': summary['potted_ce_weighting'],
-           'potted_ce_beta': summary['potted_ce_beta'],
-           'potted_label_smoothing': summary['potted_label_smoothing'],
-           'pooling': summary['pooling'],
-           'use_paper_features': summary['use_paper_features'],
-           'selection_metric': summary['selection_metric'],
-           'best_val_loss': summary['best_val_metrics']['loss'],
-           'best_val_mean_macro_f1': summary['best_val_metrics']['mean_macro_f1'],
-           'best_val_mean_accuracy': summary['best_val_metrics']['mean_accuracy'],
-           'best_val_clean_target_min_margin': (
-               summary['best_val_metrics']['clean_target_min_margin']),
-           'test_loss': summary['test_metrics']['loss'],
-           'test_mean_macro_f1': summary['test_metrics']['mean_macro_f1'],
-           'test_mean_accuracy': summary['test_metrics']['mean_accuracy'],
-           'test_clean_target_min_margin': (
-               summary['test_metrics']['clean_target_min_margin'])}
-
-    for task in TASKS:
-        row['test_' + task + '_accuracy'] = (
-            summary['test_metrics']['task_metrics'][task]['accuracy'])
-        row['test_' + task + '_macro_f1'] = (
-            summary['test_metrics']['task_metrics'][task]['macro_f1'])
-
-    return row
 
 
 if __name__ == '__main__':

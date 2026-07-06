@@ -59,9 +59,10 @@ class BLFormerEncoderLayer(nn.Module):
 
         self.norm_layer1 = nn.LayerNorm(d_model)
         self.norm_layer2 = nn.LayerNorm(d_model)
-        self.attention_layer = GeometricMultiHeadAttention(d_model=d_model,
-                                                           num_heads=num_heads,
-                                                           dropout_rate=dropout_rate)
+        self.attention_layer = GeometricMultiHeadAttention(
+            d_model=d_model,
+            num_heads=num_heads,
+            dropout_rate=dropout_rate)
         self.feed_forward = nn.Sequential(nn.Linear(d_model, ffn_dim),
                                           nn.GELU(),
                                           nn.Dropout(dropout_rate),
@@ -100,9 +101,10 @@ class BLFormer(nn.Module):
         self.num_potted_thresholds = hyperparameters.get('num_potted_thresholds', 9)
         self.num_potted_classes = hyperparameters.get('num_potted_classes', 10)
         self.pooling = hyperparameters.get('pooling', 'cls')
-        self.use_paper_features = hyperparameters.get('use_paper_features', False)
-        self.num_paper_features = hyperparameters.get('num_paper_features', 27)
-        self.paper_feature_vocab_size = hyperparameters.get('paper_feature_vocab_size', 200)
+        self.use_joint_head = hyperparameters.get('use_joint_head', False)
+
+        if self.pooling not in ['cls', 'cls_mean']:
+            raise ValueError('Unknown pooling: ' + str(self.pooling))
 
         self.type_embedding = nn.Embedding(self.num_token_types, self.d_model)
         self.ball_id_embedding = nn.Embedding(self.num_ball_ids, self.d_model,
@@ -110,15 +112,6 @@ class BLFormer(nn.Module):
         self.coord_encoder = nn.Sequential(nn.Linear(2, self.d_model),
                                            nn.GELU(),
                                            nn.Linear(self.d_model, self.d_model))
-        self.paper_feature_embeddings = None
-        self.paper_feature_norm = None
-        if self.use_paper_features:
-            self.paper_feature_embeddings = nn.ModuleList()
-            for _ in range(self.num_paper_features):
-                self.paper_feature_embeddings.append(
-                    nn.Embedding(self.paper_feature_vocab_size, self.d_model))
-            self.paper_feature_norm = nn.LayerNorm(self.d_model)
-
         self.input_dropout = nn.Dropout(self.dropout_rate)
 
         self.bias_network = nn.Sequential(nn.Linear(self.pair_feature_dim,
@@ -134,19 +127,17 @@ class BLFormer(nn.Module):
                                                     ffn_dim=self.ffn_dim,
                                                     dropout_rate=self.dropout_rate))
 
-        head_input_dim = self.d_model
-        if self.pooling == 'cls_mean':
-            head_input_dim = self.d_model * 2
-        elif self.pooling != 'cls':
-            raise ValueError('Unknown pooling: ' + str(self.pooling))
+        head_input_dim = self.d_model * 2 if self.pooling == 'cls_mean' else self.d_model
 
         self.output_norm = nn.LayerNorm(head_input_dim)
         self.clear_head = nn.Linear(head_input_dim, 1)
         self.win_head = nn.Linear(head_input_dim, 1)
         self.potted_score_head = nn.Linear(head_input_dim, 1)
         self.potted_class_head = nn.Linear(head_input_dim, self.num_potted_classes)
+        self.joint_head = nn.Linear(head_input_dim, 40) if self.use_joint_head else None
         self.potted_first_bias = nn.Parameter(torch.tensor(2.0))
-        self.potted_bias_steps = nn.Parameter(torch.zeros(self.num_potted_thresholds - 1))
+        self.potted_bias_steps = nn.Parameter(
+            torch.zeros(self.num_potted_thresholds - 1))
 
     def forward(self, batch):
 
@@ -159,25 +150,11 @@ class BLFormer(nn.Module):
         type_embedding = self.type_embedding(token_type_ids)
         ball_id_embedding = self.ball_id_embedding(ball_ids)
         coord_embedding = self.coord_encoder(coords)
-
-        coordinate_mask = ((token_type_ids == 1) | (token_type_ids == 2)).unsqueeze(-1)
+        coordinate_mask = ((token_type_ids == 1) |
+                           (token_type_ids == 2)).unsqueeze(-1)
         coord_embedding = coord_embedding * coordinate_mask.to(coord_embedding.dtype)
 
         x = type_embedding + ball_id_embedding + coord_embedding
-
-        if self.use_paper_features:
-            paper_features = batch['paper_features'].clamp(min=0,
-                                                           max=self.paper_feature_vocab_size - 1)
-            paper_embedding = 0.0
-            for feature_index, embedding_layer in enumerate(self.paper_feature_embeddings):
-                paper_embedding = paper_embedding + embedding_layer(
-                    paper_features[:, :, feature_index])
-            paper_embedding = paper_embedding / math.sqrt(self.num_paper_features)
-            paper_embedding = self.paper_feature_norm(paper_embedding)
-            paper_embedding = paper_embedding * (token_type_ids == 1).unsqueeze(-1).to(
-                paper_embedding.dtype)
-            x = x + paper_embedding
-
         x = self.input_dropout(x)
 
         attention_bias = self.bias_network(pair_features)
@@ -198,11 +175,15 @@ class BLFormer(nn.Module):
         potted_score = self.potted_score_head(cls_output)
         potted_logits = potted_score + self.ordered_potted_biases()[None, :]
 
-        return {'clear_logit': self.clear_head(cls_output).squeeze(-1),
-                'win_logit': self.win_head(cls_output).squeeze(-1),
-                'potted_logits': potted_logits,
-                'potted_class_logits': self.potted_class_head(cls_output),
-                'embedding': cls_output}
+        outputs = {'clear_logit': self.clear_head(cls_output).squeeze(-1),
+                   'win_logit': self.win_head(cls_output).squeeze(-1),
+                   'potted_logits': potted_logits,
+                   'potted_class_logits': self.potted_class_head(cls_output),
+                   'embedding': cls_output}
+        if self.use_joint_head:
+            self.add_joint_outputs(outputs, cls_output)
+
+        return outputs
 
     def ordered_potted_biases(self):
 
@@ -214,3 +195,31 @@ class BLFormer(nn.Module):
                                                                  dim=0)
 
         return torch.cat([self.potted_first_bias.reshape(1), remaining_biases], dim=0)
+
+    def add_joint_outputs(self, outputs, representation):
+
+        joint_logits = self.joint_head(representation)
+        outputs['joint_logits'] = joint_logits
+        joint_grid = joint_logits.reshape(-1, 2, 2, 10)
+
+        clear_positive = torch.logsumexp(joint_grid[:, 1, :, :].reshape(
+            joint_grid.shape[0], -1), dim=1)
+        clear_negative = torch.logsumexp(joint_grid[:, 0, :, :].reshape(
+            joint_grid.shape[0], -1), dim=1)
+        win_positive = torch.logsumexp(joint_grid[:, :, 1, :].reshape(
+            joint_grid.shape[0], -1), dim=1)
+        win_negative = torch.logsumexp(joint_grid[:, :, 0, :].reshape(
+            joint_grid.shape[0], -1), dim=1)
+        potted_class_logits = torch.logsumexp(joint_grid, dim=(1, 2))
+
+        outputs['clear_logit'] = clear_positive - clear_negative
+        outputs['win_logit'] = win_positive - win_negative
+        outputs['potted_class_logits'] = potted_class_logits
+        ordinal_logits = []
+        for threshold in range(self.num_potted_thresholds):
+            positive = torch.logsumexp(potted_class_logits[:, threshold + 1:],
+                                       dim=1)
+            negative = torch.logsumexp(potted_class_logits[:, :threshold + 1],
+                                       dim=1)
+            ordinal_logits.append(positive - negative)
+        outputs['potted_logits'] = torch.stack(ordinal_logits, dim=1)
