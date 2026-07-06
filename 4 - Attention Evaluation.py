@@ -1,4 +1,3 @@
-import argparse
 import os
 
 import torch
@@ -10,83 +9,72 @@ from ClassesML.Transformer import SpatialAttention
 from Utilities.Utilities import Utilities
 
 
-def parse_args():
+device = Utilities.resolve_device(allow_cpu=True)
+path_parent_project = os.getcwd()
+dataset_root = os.path.join(path_parent_project, "Dataset")
+processed_path = os.path.join("Output", "reproduction", "billiards_layout_paper40.pt")
+checkpoint_path = os.path.join(
+    "Output",
+    "reproduction",
+    "formal_other_methods",
+    "paper40_clean_wd0.001",
+    "Attention_clear.pt",
+)
+output_dir = os.path.join(
+    "Output",
+    "reproduction",
+    "formal_other_methods",
+    "paper40_clean_wd0.001",
+    "Attention_clear_evaluation",
+)
+split = "test"
+batch_size = 64
+num_workers = 0
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--checkpoint-path", required=True)
-    parser.add_argument(
-        "--processed-path",
-        default=os.path.join("Output", "reproduction", "billiards_layout_paper40.pt"),
-    )
-    parser.add_argument("--split", choices=["train", "test"], default="test")
-    parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--num-workers", type=int, default=0)
-    parser.add_argument("--device", default=None)
-    parser.add_argument("--output-dir", default=None)
+dataset = DatasetLoader(root=dataset_root)
+data = dataset.load_processed_data(processed_path=processed_path)
+checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
 
-    return parser.parse_args()
+loader, _, _ = dataset.load_classifier_loader(
+    data=data,
+    task=checkpoint["metadata"]["task"],
+    model_name="Attention",
+    indices=checkpoint["metadata"]["splits"][split],
+    batch_size=batch_size,
+    shuffle=False,
+    seed=checkpoint["metadata"]["seed"],
+    num_workers=num_workers,
+)
 
+model = SpatialAttention(hyperparameters=checkpoint["hyperparameters"]).to(device)
+model.load_state_dict(checkpoint["model_state_dict"])
+scope = ScopeClassifier(model, checkpoint["hyperparameters"])
 
-def main():
+trainer = TrainerClassifier(hyperparameters=checkpoint["hyperparameters"])
+trainer.set_model(model=model, device=device)
+trainer.set_scope(scope=scope)
+metrics, rows = trainer.evaluate(loader)
 
-    args = parse_args()
-    device = Utilities.resolve_device(args.device, allow_cpu=True)
+os.makedirs(output_dir, exist_ok=True)
+metrics_path = os.path.join(output_dir, split + "_metrics.json")
+predictions_path = os.path.join(output_dir, split + "_predictions.csv")
 
-    path_parent_project = os.getcwd()
-    dataset = DatasetLoader(root=os.path.join(path_parent_project, "Dataset"))
-    data = dataset.load_processed_data(processed_path=args.processed_path)
-    checkpoint = torch.load(args.checkpoint_path, map_location=device, weights_only=False)
+Utilities.write_json(
+    metrics_path,
+    {
+        "checkpoint_path": checkpoint_path,
+        "processed_path": processed_path,
+        "split": split,
+        "metrics": metrics,
+        "metadata": checkpoint["metadata"],
+    },
+)
+Utilities.write_csv(predictions_path, rows)
 
-    loader, _, _ = dataset.load_classifier_loader(
-        data=data,
-        task=checkpoint["metadata"]["task"],
-        model_name="Attention",
-        indices=checkpoint["metadata"]["splits"][args.split],
-        batch_size=args.batch_size,
-        shuffle=False,
-        seed=checkpoint["metadata"]["seed"],
-        num_workers=args.num_workers,
-    )
-
-    model = SpatialAttention(hyperparameters=checkpoint["hyperparameters"]).to(device)
-    model.load_state_dict(checkpoint["model_state_dict"])
-    scope = ScopeClassifier(model, checkpoint["hyperparameters"])
-
-    trainer = TrainerClassifier(hyperparameters=checkpoint["hyperparameters"])
-    trainer.set_model(model=model, device=device)
-    trainer.set_scope(scope=scope)
-    metrics, rows = trainer.evaluate(loader)
-
-    output_dir = args.output_dir
-    if output_dir is None:
-        checkpoint_dir = os.path.dirname(args.checkpoint_path)
-        checkpoint_name = os.path.splitext(os.path.basename(args.checkpoint_path))[0]
-        output_dir = os.path.join(checkpoint_dir, checkpoint_name + "_evaluation")
-    os.makedirs(output_dir, exist_ok=True)
-
-    metrics_path = os.path.join(output_dir, args.split + "_metrics.json")
-    predictions_path = os.path.join(output_dir, args.split + "_predictions.csv")
-
-    Utilities.write_json(
-        metrics_path,
-        {
-            "checkpoint_path": args.checkpoint_path,
-            "processed_path": args.processed_path,
-            "split": args.split,
-            "metrics": metrics,
-            "metadata": checkpoint["metadata"],
-        },
-    )
-    Utilities.write_csv(predictions_path, rows)
-
-    print("checkpoint_path:", args.checkpoint_path)
-    print("processed_path:", args.processed_path)
-    print("split:", args.split)
-    print("accuracy:", Utilities.format_float(metrics["accuracy"]))
-    print("loss:", Utilities.format_float(metrics["loss"]))
-    print("metrics_path:", metrics_path)
-    print("predictions_path:", predictions_path)
-
-
-if __name__ == "__main__":
-    main()
+print("checkpoint_path:", checkpoint_path)
+print("processed_path:", processed_path)
+print("split:", split)
+print("accuracy:", Utilities.format_float(metrics["accuracy"]))
+print("loss:", Utilities.format_float(metrics["loss"]))
+print("metrics_path:", metrics_path)
+print("predictions_path:", predictions_path)

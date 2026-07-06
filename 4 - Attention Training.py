@@ -1,4 +1,3 @@
-import argparse
 import os
 
 import torch
@@ -12,150 +11,130 @@ from Utilities.Utilities import Utilities
 
 TASKS = ["clear", "win", "potted_after_break"]
 
+device = Utilities.resolve_device(allow_cpu=True)
+path_parent_project = os.getcwd()
+dataset_root = os.path.join(path_parent_project, "Dataset")
+processed_path = os.path.join("Output", "reproduction", "billiards_layout_paper40.pt")
+output_dir = os.path.join("Output", "reproduction", "formal_other_methods", "paper40_clean_wd0.001")
+seed = 123
+batch_size = 64
+num_workers = 0
+epochs = 400
+learning_rate = 1e-5
+weight_decay = 1e-3
 
-def parse_args():
+Utilities.set_seed(seed)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--processed-path",
-        default=os.path.join("Output", "reproduction", "billiards_layout_paper40.pt"),
+dataset = DatasetLoader(root=dataset_root)
+data = dataset.load_processed_data(processed_path=processed_path)
+splits = dataset.load_paper40_split(data)
+os.makedirs(output_dir, exist_ok=True)
+
+print("device:", device)
+print("processed_path:", processed_path)
+print("split_sizes:", {"train": len(splits["train"]), "test": len(splits["test"])} )
+
+results = []
+
+for task in TASKS:
+    train_loader, input_dim, n_classes = dataset.load_classifier_loader(
+        data=data,
+        task=task,
+        model_name="Attention",
+        indices=splits["train"],
+        batch_size=batch_size,
+        shuffle=True,
+        seed=seed,
+        num_workers=num_workers,
     )
-    parser.add_argument("--epochs", type=int, default=400)
-    parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--learning-rate", type=float, default=1e-5)
-    parser.add_argument("--weight-decay", type=float, default=1e-3)
-    parser.add_argument("--seed", type=int, default=123)
-    parser.add_argument("--output-dir", default=None)
-    parser.add_argument("--device", default=None)
-    parser.add_argument("--num-workers", type=int, default=0)
 
-    return parser.parse_args()
+    hyperparameters = {
+        "input_dim": input_dim,
+        "output_dim": n_classes,
+        "embedding_dim": 144,
+        "hidden_layers_sizes": [144],
+        "activation": "relu",
+        "dropout_rate": 0.3,
+        "criterion": "cross_entropy",
+        "learning_rate": learning_rate,
+        "weight_decay": weight_decay,
+        "max_epochs": epochs,
+        "batch_size": batch_size,
+    }
 
+    model = SpatialAttention(hyperparameters=hyperparameters).to(device)
+    scope = ScopeClassifier(model, hyperparameters)
 
-def main():
+    trainer = TrainerClassifier(hyperparameters=hyperparameters)
+    trainer.set_model(model=model, device=device)
+    trainer.set_scope(scope=scope)
+    trainer.set_data(train_loader=train_loader)
+    trainer.run()
 
-    args = parse_args()
-    Utilities.set_seed(args.seed)
+    train_metrics, _ = trainer.evaluate(train_loader)
 
-    device = Utilities.resolve_device(args.device, allow_cpu=True)
-    path_parent_project = os.getcwd()
-    dataset = DatasetLoader(root=os.path.join(path_parent_project, "Dataset"))
-    data = dataset.load_processed_data(processed_path=args.processed_path)
-    splits = dataset.load_paper40_split(data)
+    checkpoint_path = os.path.join(output_dir, "Attention_" + task + ".pt")
+    history_path = os.path.join(output_dir, "Attention_" + task + "_history.csv")
+    summary_path = os.path.join(output_dir, "Attention_" + task + "_train.json")
 
-    output_dir = args.output_dir
-    if output_dir is None:
-        output_dir = os.path.join(
-            "Output",
-            "reproduction",
-            "formal_other_methods",
-            "paper40_clean_wd" + str(args.weight_decay),
-        )
-    os.makedirs(output_dir, exist_ok=True)
-
-    print("device:", device)
-    print("processed_path:", args.processed_path)
-    print("split_sizes:", {"train": len(splits["train"]), "test": len(splits["test"])})
-
-    results = []
-
-    for task in TASKS:
-        train_loader, input_dim, n_classes = dataset.load_classifier_loader(
-            data=data,
-            task=task,
-            model_name="Attention",
-            indices=splits["train"],
-            batch_size=args.batch_size,
-            shuffle=True,
-            seed=args.seed,
-            num_workers=args.num_workers,
-        )
-
-        hyperparameters = {
-            "input_dim": input_dim,
-            "output_dim": n_classes,
-            "embedding_dim": 144,
-            "hidden_layers_sizes": [144],
-            "activation": "relu",
-            "dropout_rate": 0.3,
-            "criterion": "cross_entropy",
-            "learning_rate": args.learning_rate,
-            "weight_decay": args.weight_decay,
-            "max_epochs": args.epochs,
-            "batch_size": args.batch_size,
-        }
-
-        model = SpatialAttention(hyperparameters=hyperparameters).to(device)
-        scope = ScopeClassifier(model, hyperparameters)
-
-        trainer = TrainerClassifier(hyperparameters=hyperparameters)
-        trainer.set_model(model=model, device=device)
-        trainer.set_scope(scope=scope)
-        trainer.set_data(train_loader=train_loader)
-        trainer.run()
-
-        train_metrics, _ = trainer.evaluate(train_loader)
-
-        checkpoint_path = os.path.join(output_dir, "Attention_" + task + ".pt")
-        history_path = os.path.join(output_dir, "Attention_" + task + "_history.csv")
-        summary_path = os.path.join(output_dir, "Attention_" + task + "_train.json")
-
-        torch.save(
-            {
-                "model_state_dict": {
-                    key: value.detach().cpu().clone()
-                    for key, value in model.state_dict().items()
-                },
-                "hyperparameters": hyperparameters,
-                "metadata": {
-                    "model": "Attention",
-                    "task": task,
-                    "protocol": "paper40_clean",
-                    "seed": args.seed,
-                    "splits": splits,
-                    "args": vars(args),
-                },
+    torch.save(
+        {
+            "model_state_dict": {
+                key: value.detach().cpu().clone()
+                for key, value in model.state_dict().items()
             },
-            checkpoint_path,
-        )
-
-        Utilities.write_csv(history_path, trainer.history)
-        Utilities.write_json(
-            summary_path,
-            {
+            "hyperparameters": hyperparameters,
+            "metadata": {
                 "model": "Attention",
                 "task": task,
                 "protocol": "paper40_clean",
-                "seed": args.seed,
-                "epochs": args.epochs,
-                "batch_size": args.batch_size,
-                "learning_rate": args.learning_rate,
-                "weight_decay": args.weight_decay,
-                "train_size": len(splits["train"]),
-                "test_size": len(splits["test"]),
-                "checkpoint_path": checkpoint_path,
-                "history_path": history_path,
-                "hyperparameters": hyperparameters,
-                "train_loss": train_metrics["loss"],
-                "train_accuracy": train_metrics["accuracy"],
-                "split_notes": splits["notes"],
+                "seed": seed,
+                "splits": splits,
+                "config": {
+                    "processed_path": processed_path,
+                    "output_dir": output_dir,
+                    "batch_size": batch_size,
+                    "num_workers": num_workers,
+                    "epochs": epochs,
+                },
             },
-        )
+        },
+        checkpoint_path,
+    )
 
-        print("saved:", checkpoint_path)
-        results.append(
-            {
-                "model": "Attention",
-                "task": task,
-                "checkpoint_path": checkpoint_path,
-                "train_accuracy": train_metrics["accuracy"],
-            }
-        )
+    Utilities.write_csv(history_path, trainer.history)
+    Utilities.write_json(
+        summary_path,
+        {
+            "model": "Attention",
+            "task": task,
+            "protocol": "paper40_clean",
+            "seed": seed,
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "learning_rate": learning_rate,
+            "weight_decay": weight_decay,
+            "train_size": len(splits["train"]),
+            "test_size": len(splits["test"]),
+            "checkpoint_path": checkpoint_path,
+            "history_path": history_path,
+            "hyperparameters": hyperparameters,
+            "train_loss": train_metrics["loss"],
+            "train_accuracy": train_metrics["accuracy"],
+            "split_notes": splits["notes"],
+        },
+    )
 
-    summary_path = os.path.join(output_dir, "Attention_training_summary.json")
-    Utilities.write_json(summary_path, {"results": results})
-    print("summary:", summary_path)
+    print("saved:", checkpoint_path)
+    results.append(
+        {
+            "model": "Attention",
+            "task": task,
+            "checkpoint_path": checkpoint_path,
+            "train_accuracy": train_metrics["accuracy"],
+        }
+    )
 
-
-if __name__ == "__main__":
-    main()
+summary_path = os.path.join(output_dir, "Attention_training_summary.json")
+Utilities.write_json(summary_path, {"results": results})
+print("summary:", summary_path)

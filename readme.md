@@ -52,129 +52,81 @@ python ClassesData/PreprocessBilliards.py \
   --audit-json Output/reproduction/preprocess_paper40_audit.json
 ```
 
-The numbered training and evaluation scripts read the stored `split_indices` from this processed file directly.
+## Script Style
 
-## Environment Setup
+The numbered scripts now follow the `DL Class base` style directly:
 
-Example setup:
-
-```bash
-conda create -n billiards-prediction python=3.13.14
-conda activate billiards-prediction
-pip install -r requirements.txt
-```
+- no `argparse`
+- edit the configuration values at the top of each file
+- run the script itself
+- training and evaluation stay separated
 
 ## Training Scripts
 
-The repository now follows the `DL Class base` style more closely:
-
-- each model has one training script and one evaluation script
-- training only trains and saves checkpoints / logs
-- evaluation only loads a saved checkpoint and reports metrics / predictions
-
 ### 0 - BLFormer Training
 
-Recommended main result from the docs:
+Open [0 - BLFormer Training.py](/home/gvlab/Desktop/WANG/MachineLearning/Billiards_Prediction/0%20-%20BLFormer%20Training.py) and edit values such as:
 
-```bash
-python "0 - BLFormer Training.py" \
-  --processed-path Output/reproduction/billiards_layout_paper40.pt \
-  --experiment joint_d80_clsmean
+```python
+experiment = "joint_d80_clsmean"
+processed_path = os.path.join("Output", "reproduction", "billiards_layout_paper40.pt")
+output_dir = os.path.join("Output", "blformer_paper40", experiment)
 ```
 
-Independent-head baseline from the docs:
+Then run:
 
 ```bash
-python "0 - BLFormer Training.py" \
-  --processed-path Output/reproduction/billiards_layout_paper40.pt \
-  --experiment hybrid_d80_clsmean_ord0.25
+python "0 - BLFormer Training.py"
 ```
 
-Optional marginal-loss variant:
+Supported doc experiments kept in the file:
 
-```bash
-python "0 - BLFormer Training.py" \
-  --processed-path Output/reproduction/billiards_layout_paper40.pt \
-  --experiment joint_d80_clsmean_marg0.5
-```
+- `joint_d80_clsmean`
+- `joint_d80_clsmean_marg0.5`
+- `hybrid_d80_clsmean_ord0.25`
 
 ### 1 - BLCNN Training
 
+Edit the top of [1 - BLCNN Training.py](/home/gvlab/Desktop/WANG/MachineLearning/Billiards_Prediction/1%20-%20BLCNN%20Training.py), then run:
+
 ```bash
-python "1 - BLCNN Training.py" \
-  --processed-path Output/reproduction/billiards_layout_paper40.pt \
-  --weight-decay 0.0001
+python "1 - BLCNN Training.py"
 ```
 
 ### 2 - MLP Training
 
+Edit the top of [2 - MLP Training.py](/home/gvlab/Desktop/WANG/MachineLearning/Billiards_Prediction/2%20-%20MLP%20Training.py), then run:
+
 ```bash
-python "2 - MLP Training.py" \
-  --processed-path Output/reproduction/billiards_layout_paper40.pt \
-  --weight-decay 0.001
+python "2 - MLP Training.py"
 ```
 
 ### 3 - Transformer Training
 
+Edit the top of [3 - Transformer Training.py](/home/gvlab/Desktop/WANG/MachineLearning/Billiards_Prediction/3%20-%20Transformer%20Training.py), then run:
+
 ```bash
-python "3 - Transformer Training.py" \
-  --processed-path Output/reproduction/billiards_layout_paper40.pt \
-  --weight-decay 0.001
+python "3 - Transformer Training.py"
 ```
 
 ### 4 - Attention Training
 
+Edit the top of [4 - Attention Training.py](/home/gvlab/Desktop/WANG/MachineLearning/Billiards_Prediction/4%20-%20Attention%20Training.py), then run:
+
 ```bash
-python "4 - Attention Training.py" \
-  --processed-path Output/reproduction/billiards_layout_paper40.pt \
-  --weight-decay 0.001
+python "4 - Attention Training.py"
 ```
 
 ## Evaluation Scripts
 
-### 0 - BLFormer Evaluation
+Each evaluation file also uses top-of-file configuration. Set `checkpoint_path`, `output_dir`, `split`, and related values in the script, then run it.
 
 ```bash
-python "0 - BLFormer Evaluation.py" \
-  --checkpoint-path Output/blformer_paper40/joint_d80_clsmean/BLFormer_joint_d80_clsmean.pt \
-  --processed-path Output/reproduction/billiards_layout_paper40.pt \
-  --split test
-```
-
-### 1 - BLCNN Evaluation
-
-```bash
-python "1 - BLCNN Evaluation.py" \
-  --checkpoint-path Output/reproduction/formal/paper40_clean_wd0.0001/BLCNN_clear.pt \
-  --processed-path Output/reproduction/billiards_layout_paper40.pt \
-  --split test
-```
-
-### 2 - MLP Evaluation
-
-```bash
-python "2 - MLP Evaluation.py" \
-  --checkpoint-path Output/reproduction/formal_other_methods/paper40_clean_wd0.001/MLP_clear.pt \
-  --processed-path Output/reproduction/billiards_layout_paper40.pt \
-  --split test
-```
-
-### 3 - Transformer Evaluation
-
-```bash
-python "3 - Transformer Evaluation.py" \
-  --checkpoint-path Output/reproduction/formal_other_methods/paper40_clean_wd0.001/Transformer_clear.pt \
-  --processed-path Output/reproduction/billiards_layout_paper40.pt \
-  --split test
-```
-
-### 4 - Attention Evaluation
-
-```bash
-python "4 - Attention Evaluation.py" \
-  --checkpoint-path Output/reproduction/formal_other_methods/paper40_clean_wd0.001/Attention_clear.pt \
-  --processed-path Output/reproduction/billiards_layout_paper40.pt \
-  --split test
+python "0 - BLFormer Evaluation.py"
+python "1 - BLCNN Evaluation.py"
+python "2 - MLP Evaluation.py"
+python "3 - Transformer Evaluation.py"
+python "4 - Attention Evaluation.py"
 ```
 
 ## Saved Outputs
