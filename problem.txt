@@ -1,0 +1,33 @@
+1. 复现不成功 如何对比
+    想法：BLCNN,MLP,BLFformer,对比结果--再与原文结果对比
+
+2. 代码整理：
+ - 我看是很多trial调试，选择正确的那个 按照风格整理
+ - ClassesML 也需要重新按风格整理
+ 
+3. 提交内容 （明天汪整理+做ppt+report）
+ - The submission must include complete source code, report, presentation slides, and the list of all student names and IDs (students_information.txt).
+ - The README must explain project objective, dataset download instructions, environment setup, how to train the model, how to run inference/evaluation, and expected output/results.
+ - The report must include project objective, methodology, dataset description, preprocessing, model architecture, results, analysis, and conclusion.
+ - The presentation should include project overview, methodology, results, challenges encountered.
+ - Recommended Project Structure
+    project_name/
+    ├── ClassesML/
+    ├── ……
+    ├── README.md
+    ├── * requirements.txt or environment.yml
+    ├── * students_information.txt 
+    ├── data/
+    ├── models/
+    ├── training/
+    ├── evaluation/
+    ├── results/
+    ├── report/
+    └── presentation/
+    └── (Training.py)
+    └── (Evaluation.py) or (Results.py)
+
+4. pre任务分配
+ - Preprocessing 
+ - BLFformer wentao
+ - Results
