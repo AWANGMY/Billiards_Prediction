@@ -1,0 +1,52 @@
+{
+  "accuracy_gap_to_paper_blcnn": -23.882439862542952,
+  "batch_size": 64,
+  "best_epoch": null,
+  "best_selection_accuracy": null,
+  "best_test_accuracy": 65.80756013745705,
+  "best_test_batch_mean_accuracy": 66.20065789473684,
+  "best_test_loss": 0.8971925943168169,
+  "best_test_release_denominator_accuracy": 62.99342105263158,
+  "checkpoint_path": null,
+  "epochs": 400,
+  "final_test_accuracy": 65.80756013745705,
+  "final_test_batch_mean_accuracy": 66.20065789473684,
+  "final_test_loss": 0.8971925943168169,
+  "final_test_release_denominator_accuracy": 62.99342105263158,
+  "final_train_accuracy": 69.3298969072165,
+  "final_train_loss": 0.5891385047706132,
+  "hyperparameters": {
+    "activation": "relu",
+    "batch_size": 64,
+    "dropout_rate": 0.3,
+    "embedding_dim": 56,
+    "expansion_factor": 2,
+    "input_dim": [
+      10,
+      27
+    ],
+    "learning_rate": 1e-05,
+    "max_epochs": 400,
+    "num_heads": 4,
+    "num_layers": 2,
+    "output_dim": 2,
+    "weight_decay": 0.0001
+  },
+  "learning_rate": 1e-05,
+  "model": "Transformer",
+  "paper_blcnn_target_accuracy": 89.69,
+  "protocol": "paper40_clean",
+  "protocol_notes": [
+    "random 40% train and 60% held-out evaluation, matching paper text"
+  ],
+  "reported_test_accuracy": 65.80756013745705,
+  "sample_count": 1940,
+  "seed": 123,
+  "selection_metric": "none",
+  "task": "clear",
+  "test_size": 1164,
+  "train_size": 776,
+  "val_size": 0,
+  "weight_decay": 0.0001,
+  "zero_grad_each_batch": true
+}

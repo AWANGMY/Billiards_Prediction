@@ -1,0 +1,52 @@
+{
+  "accuracy_gap_to_paper_blcnn": -19.377869415807567,
+  "batch_size": 64,
+  "best_epoch": null,
+  "best_selection_accuracy": null,
+  "best_test_accuracy": 67.18213058419244,
+  "best_test_batch_mean_accuracy": 66.80372807017544,
+  "best_test_loss": 0.6106696876463612,
+  "best_test_release_denominator_accuracy": 64.30921052631578,
+  "checkpoint_path": null,
+  "epochs": 400,
+  "final_test_accuracy": 67.18213058419244,
+  "final_test_batch_mean_accuracy": 66.80372807017544,
+  "final_test_loss": 0.6106696876463612,
+  "final_test_release_denominator_accuracy": 64.30921052631578,
+  "final_train_accuracy": 73.71134020618557,
+  "final_train_loss": 0.5147315822925764,
+  "hyperparameters": {
+    "activation": "relu",
+    "batch_normalization": false,
+    "batch_size": 64,
+    "dropout_rate": 0.3,
+    "hidden_layers_sizes": [
+      128,
+      128
+    ],
+    "input_dim": [
+      270
+    ],
+    "learning_rate": 1e-05,
+    "max_epochs": 400,
+    "output_dim": 2,
+    "weight_decay": 0.0001
+  },
+  "learning_rate": 1e-05,
+  "model": "MLP",
+  "paper_blcnn_target_accuracy": 86.56,
+  "protocol": "paper40_clean",
+  "protocol_notes": [
+    "random 40% train and 60% held-out evaluation, matching paper text"
+  ],
+  "reported_test_accuracy": 67.18213058419244,
+  "sample_count": 1940,
+  "seed": 123,
+  "selection_metric": "none",
+  "task": "win",
+  "test_size": 1164,
+  "train_size": 776,
+  "val_size": 0,
+  "weight_decay": 0.0001,
+  "zero_grad_each_batch": true
+}

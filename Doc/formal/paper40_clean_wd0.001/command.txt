@@ -1,0 +1,8 @@
+protocol=paper40_clean
+processed_path=Output/reproduction/billiards_layout_paper40.pt
+weight_decay=0.001
+start=2026-07-06 01:38:02 JST
+host=mg0004
+/work/gw17/w17001/envs/billiards-prediction/bin/python -u run_blcnn_reproduction.py --processed-path Output/reproduction/billiards_layout_paper40.pt --protocol paper40_clean --tasks all --epochs 400 --weight-decay 0.001 --output-dir Output/reproduction/formal/paper40_clean_wd0.001
+exit_status=0
+finish=2026-07-06 01:39:49 JST

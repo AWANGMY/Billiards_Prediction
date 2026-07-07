@@ -1,0 +1,8 @@
+protocol=current_control
+processed_path=Dataset/processed/billiards_layout.pt
+weight_decay=0.001
+start=2026-07-06 01:47:08 JST
+host=mg0004
+/work/gw17/w17001/envs/billiards-prediction/bin/python -u run_blcnn_reproduction.py --processed-path Dataset/processed/billiards_layout.pt --protocol current_control --tasks all --epochs 400 --weight-decay 0.001 --output-dir Output/reproduction/formal/current_control_wd0.001
+exit_status=0
+finish=2026-07-06 01:49:31 JST

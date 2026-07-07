@@ -1,0 +1,4 @@
+model,task,protocol,seed,epochs,weight_decay,reported_test_accuracy,paper_target_accuracy,accuracy_gap_to_paper,best_epoch,best_selection_accuracy,train_size,val_size,test_size,sample_count
+BLCNN,clear,paper40_clean,123,400,0.001,71.21993127147766,89.69,-18.470068728522335,,,776,0,1164,1940
+BLCNN,win,paper40_clean,123,400,0.001,66.5807560137457,86.56,-19.979243986254303,,,776,0,1164,1940
+BLCNN,potted_after_break,paper40_clean,123,400,0.001,61.254295532646054,80.94,-19.685704467353943,,,776,0,1164,1940

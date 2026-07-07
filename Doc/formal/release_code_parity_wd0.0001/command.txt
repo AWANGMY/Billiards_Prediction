@@ -1,0 +1,8 @@
+protocol=release_code_parity
+processed_path=Output/reproduction/billiards_layout_paper40.pt
+weight_decay=0.0001
+start=2026-07-06 01:44:20 JST
+host=mg0004
+/work/gw17/w17001/envs/billiards-prediction/bin/python -u run_blcnn_reproduction.py --processed-path Output/reproduction/billiards_layout_paper40.pt --protocol release_code_parity --tasks all --epochs 400 --weight-decay 0.0001 --output-dir Output/reproduction/formal/release_code_parity_wd0.0001
+exit_status=0
+finish=2026-07-06 01:47:08 JST

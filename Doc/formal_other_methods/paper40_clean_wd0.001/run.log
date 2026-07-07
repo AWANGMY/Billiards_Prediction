@@ -1,0 +1,169 @@
+device: cuda
+processed_path: Output/reproduction/billiards_layout_paper40.pt
+protocol: paper40_clean
+models: ['MLP', 'Transformer', 'Attention']
+split_sizes: {'train': 776, 'val': 0, 'test': 1164}
+protocol_notes: random 40% train and 60% held-out evaluation, matching paper text
+MLP clear epoch 25/400 train_acc=55.9278
+MLP clear epoch 50/400 train_acc=55.7990
+MLP clear epoch 75/400 train_acc=63.4021
+MLP clear epoch 100/400 train_acc=62.5000
+MLP clear epoch 125/400 train_acc=61.9845
+MLP clear epoch 150/400 train_acc=65.7216
+MLP clear epoch 175/400 train_acc=67.1392
+MLP clear epoch 200/400 train_acc=67.2680
+MLP clear epoch 225/400 train_acc=69.7165
+MLP clear epoch 250/400 train_acc=71.0052
+MLP clear epoch 275/400 train_acc=70.3608
+MLP clear epoch 300/400 train_acc=70.1031
+MLP clear epoch 325/400 train_acc=72.6804
+MLP clear epoch 350/400 train_acc=74.3557
+MLP clear epoch 375/400 train_acc=76.0309
+MLP clear epoch 400/400 train_acc=73.7113
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/MLP_paper40_clean_clear_result.csv
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/MLP_paper40_clean_clear_result.json
+MLP win epoch 25/400 train_acc=67.3969
+MLP win epoch 50/400 train_acc=68.2990
+MLP win epoch 75/400 train_acc=68.5567
+MLP win epoch 100/400 train_acc=68.8144
+MLP win epoch 125/400 train_acc=71.0052
+MLP win epoch 150/400 train_acc=72.1649
+MLP win epoch 175/400 train_acc=71.1340
+MLP win epoch 200/400 train_acc=73.1959
+MLP win epoch 225/400 train_acc=72.5515
+MLP win epoch 250/400 train_acc=72.1649
+MLP win epoch 275/400 train_acc=73.9691
+MLP win epoch 300/400 train_acc=72.8093
+MLP win epoch 325/400 train_acc=73.0670
+MLP win epoch 350/400 train_acc=73.4536
+MLP win epoch 375/400 train_acc=74.3557
+MLP win epoch 400/400 train_acc=73.5825
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/MLP_paper40_clean_win_result.csv
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/MLP_paper40_clean_win_result.json
+MLP potted_after_break epoch 25/400 train_acc=26.9330
+MLP potted_after_break epoch 50/400 train_acc=35.1804
+MLP potted_after_break epoch 75/400 train_acc=40.7216
+MLP potted_after_break epoch 100/400 train_acc=42.0103
+MLP potted_after_break epoch 125/400 train_acc=46.6495
+MLP potted_after_break epoch 150/400 train_acc=47.0361
+MLP potted_after_break epoch 175/400 train_acc=46.6495
+MLP potted_after_break epoch 200/400 train_acc=48.9691
+MLP potted_after_break epoch 225/400 train_acc=51.2887
+MLP potted_after_break epoch 250/400 train_acc=53.0928
+MLP potted_after_break epoch 275/400 train_acc=51.4175
+MLP potted_after_break epoch 300/400 train_acc=51.6753
+MLP potted_after_break epoch 325/400 train_acc=53.0928
+MLP potted_after_break epoch 350/400 train_acc=55.4124
+MLP potted_after_break epoch 375/400 train_acc=56.0567
+MLP potted_after_break epoch 400/400 train_acc=53.9948
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/MLP_paper40_clean_potted_after_break_result.csv
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/MLP_paper40_clean_potted_after_break_result.json
+Transformer clear epoch 25/400 train_acc=50.9021
+Transformer clear epoch 50/400 train_acc=51.6753
+Transformer clear epoch 75/400 train_acc=54.2526
+Transformer clear epoch 100/400 train_acc=54.7680
+Transformer clear epoch 125/400 train_acc=53.7371
+Transformer clear epoch 150/400 train_acc=56.8299
+Transformer clear epoch 175/400 train_acc=57.2165
+Transformer clear epoch 200/400 train_acc=55.0258
+Transformer clear epoch 225/400 train_acc=60.5670
+Transformer clear epoch 250/400 train_acc=60.5670
+Transformer clear epoch 275/400 train_acc=61.3402
+Transformer clear epoch 300/400 train_acc=64.4330
+Transformer clear epoch 325/400 train_acc=66.7526
+Transformer clear epoch 350/400 train_acc=66.7526
+Transformer clear epoch 375/400 train_acc=65.3351
+Transformer clear epoch 400/400 train_acc=69.4588
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/Transformer_paper40_clean_clear_result.csv
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/Transformer_paper40_clean_clear_result.json
+Transformer win epoch 25/400 train_acc=72.1649
+Transformer win epoch 50/400 train_acc=72.1649
+Transformer win epoch 75/400 train_acc=72.4227
+Transformer win epoch 100/400 train_acc=71.9072
+Transformer win epoch 125/400 train_acc=72.2938
+Transformer win epoch 150/400 train_acc=72.0361
+Transformer win epoch 175/400 train_acc=72.0361
+Transformer win epoch 200/400 train_acc=72.1649
+Transformer win epoch 225/400 train_acc=72.1649
+Transformer win epoch 250/400 train_acc=72.1649
+Transformer win epoch 275/400 train_acc=72.1649
+Transformer win epoch 300/400 train_acc=72.1649
+Transformer win epoch 325/400 train_acc=72.1649
+Transformer win epoch 350/400 train_acc=72.1649
+Transformer win epoch 375/400 train_acc=72.2938
+Transformer win epoch 400/400 train_acc=72.1649
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/Transformer_paper40_clean_win_result.csv
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/Transformer_paper40_clean_win_result.json
+Transformer potted_after_break epoch 25/400 train_acc=31.9588
+Transformer potted_after_break epoch 50/400 train_acc=33.3763
+Transformer potted_after_break epoch 75/400 train_acc=33.5052
+Transformer potted_after_break epoch 100/400 train_acc=33.3763
+Transformer potted_after_break epoch 125/400 train_acc=33.2474
+Transformer potted_after_break epoch 150/400 train_acc=34.6649
+Transformer potted_after_break epoch 175/400 train_acc=36.4691
+Transformer potted_after_break epoch 200/400 train_acc=35.3093
+Transformer potted_after_break epoch 225/400 train_acc=34.6649
+Transformer potted_after_break epoch 250/400 train_acc=36.5979
+Transformer potted_after_break epoch 275/400 train_acc=38.0155
+Transformer potted_after_break epoch 300/400 train_acc=40.2062
+Transformer potted_after_break epoch 325/400 train_acc=40.2062
+Transformer potted_after_break epoch 350/400 train_acc=41.6237
+Transformer potted_after_break epoch 375/400 train_acc=41.6237
+Transformer potted_after_break epoch 400/400 train_acc=44.7165
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/Transformer_paper40_clean_potted_after_break_result.csv
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/Transformer_paper40_clean_potted_after_break_result.json
+Attention clear epoch 25/400 train_acc=47.9381
+Attention clear epoch 50/400 train_acc=47.1649
+Attention clear epoch 75/400 train_acc=53.8660
+Attention clear epoch 100/400 train_acc=64.5619
+Attention clear epoch 125/400 train_acc=67.6546
+Attention clear epoch 150/400 train_acc=68.2990
+Attention clear epoch 175/400 train_acc=69.0722
+Attention clear epoch 200/400 train_acc=69.0722
+Attention clear epoch 225/400 train_acc=69.3299
+Attention clear epoch 250/400 train_acc=69.4588
+Attention clear epoch 275/400 train_acc=69.3299
+Attention clear epoch 300/400 train_acc=69.2010
+Attention clear epoch 325/400 train_acc=69.0722
+Attention clear epoch 350/400 train_acc=69.0722
+Attention clear epoch 375/400 train_acc=69.2010
+Attention clear epoch 400/400 train_acc=69.2010
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/Attention_paper40_clean_clear_result.csv
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/Attention_paper40_clean_clear_result.json
+Attention win epoch 25/400 train_acc=69.3299
+Attention win epoch 50/400 train_acc=71.6495
+Attention win epoch 75/400 train_acc=71.3918
+Attention win epoch 100/400 train_acc=71.1340
+Attention win epoch 125/400 train_acc=71.3918
+Attention win epoch 150/400 train_acc=71.5206
+Attention win epoch 175/400 train_acc=71.9072
+Attention win epoch 200/400 train_acc=72.0361
+Attention win epoch 225/400 train_acc=72.1649
+Attention win epoch 250/400 train_acc=72.0361
+Attention win epoch 275/400 train_acc=72.2938
+Attention win epoch 300/400 train_acc=72.1649
+Attention win epoch 325/400 train_acc=71.9072
+Attention win epoch 350/400 train_acc=71.9072
+Attention win epoch 375/400 train_acc=72.1649
+Attention win epoch 400/400 train_acc=72.0361
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/Attention_paper40_clean_win_result.csv
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/Attention_paper40_clean_win_result.json
+Attention potted_after_break epoch 25/400 train_acc=28.6082
+Attention potted_after_break epoch 50/400 train_acc=30.5412
+Attention potted_after_break epoch 75/400 train_acc=33.3763
+Attention potted_after_break epoch 100/400 train_acc=33.3763
+Attention potted_after_break epoch 125/400 train_acc=30.9278
+Attention potted_after_break epoch 150/400 train_acc=32.9897
+Attention potted_after_break epoch 175/400 train_acc=33.3763
+Attention potted_after_break epoch 200/400 train_acc=33.2474
+Attention potted_after_break epoch 225/400 train_acc=34.5361
+Attention potted_after_break epoch 250/400 train_acc=34.4072
+Attention potted_after_break epoch 275/400 train_acc=36.0825
+Attention potted_after_break epoch 300/400 train_acc=35.8247
+Attention potted_after_break epoch 325/400 train_acc=35.8247
+Attention potted_after_break epoch 350/400 train_acc=36.8557
+Attention potted_after_break epoch 375/400 train_acc=39.0464
+Attention potted_after_break epoch 400/400 train_acc=39.8196
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/Attention_paper40_clean_potted_after_break_result.csv
+saved: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/Attention_paper40_clean_potted_after_break_result.json
+summary: Output/reproduction/formal_other_methods/paper40_clean_wd0.001/OtherMethods_paper40_clean_summary_20260706_021302.csv

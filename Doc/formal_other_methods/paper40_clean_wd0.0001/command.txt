@@ -1,0 +1,2 @@
+PY=/work/gw17/w17001/envs/billiards-prediction/bin/python
+/work/gw17/w17001/envs/billiards-prediction/bin/python -u run_other_methods_reproduction.py --processed-path Output/reproduction/billiards_layout_paper40.pt --protocol paper40_clean --models MLP Transformer Attention --tasks all --epochs 400 --weight-decay 0.0001 --device cuda --output-dir Output/reproduction/formal_other_methods/paper40_clean_wd0.0001 --log-every-epochs 25

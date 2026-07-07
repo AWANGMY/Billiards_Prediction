@@ -1,0 +1,4 @@
+model,task,protocol,seed,epochs,weight_decay,reported_test_accuracy,paper_target_accuracy,accuracy_gap_to_paper,best_epoch,best_selection_accuracy,train_size,val_size,test_size,sample_count
+BLCNN,clear,release_code_parity,123,400,0.001,94.3298969072165,89.69,4.639896907216496,386,94.3298969072165,1223,135,582,1940
+BLCNN,win,release_code_parity,123,400,0.001,96.21993127147766,86.56,9.65993127147766,390,96.21993127147766,1223,135,582,1940
+BLCNN,potted_after_break,release_code_parity,123,400,0.001,94.67353951890034,80.94,13.733539518900344,397,94.67353951890034,1223,135,582,1940
