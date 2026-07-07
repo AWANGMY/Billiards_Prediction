@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2026.7.7)  7 JUL 2026 03:23
+This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2026.7.7)  7 JUL 2026 15:08
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -288,15 +288,15 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 <figures/confusion_matrices.pdf, id=21, 412.33751pt x 169.23582pt>
 File: figures/confusion_matrices.pdf Graphic file (type pdf)
 <use figures/confusion_matrices.pdf>
-Package pdftex.def Info: figures/confusion_matrices.pdf  used on input line 111
+Package pdftex.def Info: figures/confusion_matrices.pdf  used on input line 110
 .
 (pdftex.def)             Requested size: 428.41624pt x 175.84357pt.
  [3 <./figures/confusion_matrices.pdf>] [4] (./report.aux) ) 
 Here is how much of TeX's memory you used:
- 3413 strings out of 481008
- 45431 string characters out of 5909440
- 347915 words of memory out of 5000000
- 20568 multiletter control sequences out of 15000+600000
+ 3412 strings out of 481008
+ 45417 string characters out of 5909440
+ 346912 words of memory out of 5000000
+ 20567 multiletter control sequences out of 15000+600000
  413010 words of font info for 64 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
  68i,7n,74p,809b,291s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -314,7 +314,7 @@ share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/share/t
 exlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/share/texlive
 /texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb></usr/share/texlive/texmf
 -dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
-Output written on report.pdf (4 pages, 178093 bytes).
+Output written on report.pdf (4 pages, 174065 bytes).
 PDF statistics:
  118 PDF objects out of 1000 (max. 8388607)
  61 compressed objects within 1 object stream

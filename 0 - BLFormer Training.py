@@ -12,20 +12,20 @@ from Utilities.Utilities import Utilities
 device = Utilities.resolve_device(allow_cpu=True)
 path_parent_project = os.getcwd()
 dataset_root = os.path.join(path_parent_project, "Dataset")
-processed_path = os.path.join(dataset_root, "processed", "billiards_layout.pt")
-run_name = "joint_d80_clsmean"
+processed_path = os.path.join(dataset_root, "processed", "billiards_layout_paper40.pt")
+run_name = "joint_d80_clsmean_marg0.5_fixed259"
 output_dir = os.path.join("Output", "blformer_paper40", run_name)
 seed = 123
 batch_size = 64
 num_workers = 0
-epochs = 200
+epochs = 259
 learning_rate = 3e-4
 weight_decay = 1e-2
 augment_train = True
 potted_head = "class"
 use_joint_head = True
-joint_marginal_weight = 0.0
-potted_ordinal_weight = 0.25
+joint_marginal_weight = 0.5
+potted_ordinal_weight = 1.0
 
 Utilities.set_seed(seed)
 

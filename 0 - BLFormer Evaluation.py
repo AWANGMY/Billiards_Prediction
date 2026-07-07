@@ -12,18 +12,18 @@ from Utilities.Utilities import Utilities
 device = Utilities.resolve_device(allow_cpu=True)
 path_parent_project = os.getcwd()
 dataset_root = os.path.join(path_parent_project, "Dataset")
-processed_path = os.path.join(dataset_root, "processed", "billiards_layout.pt")
+processed_path = os.path.join(dataset_root, "processed", "billiards_layout_paper40.pt")
 checkpoint_path = os.path.join(
     "Output",
     "blformer_paper40",
-    "joint_d80_clsmean",
-    "BLFormer_joint_d80_clsmean.pt",
+    "joint_d80_clsmean_marg0.5_fixed259",
+    "BLFormer_joint_d80_clsmean_marg0.5_fixed259.pt",
 )
 output_dir = os.path.join(
     "Output",
     "blformer_paper40",
-    "joint_d80_clsmean",
-    "BLFormer_joint_d80_clsmean_evaluation",
+    "joint_d80_clsmean_marg0.5_fixed259",
+    "BLFormer_joint_d80_clsmean_marg0.5_fixed259_evaluation",
 )
 split = "test"
 batch_size = 64

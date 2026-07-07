@@ -16,3 +16,8 @@ Dataset/data_layouts/
 Dataset/data_trajectories/
 Dataset/data _trajectories/
 Output/
+
+# Documentation artifacts: keep only the final report in Git.
+/Doc/*
+!/Doc/Final_report/
+!/Doc/Final_report/**

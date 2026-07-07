@@ -42,7 +42,7 @@ Preprocessing is kept explicit because small changes in this dataset can alter c
 \[
   x_b = [x_b^{norm}, y_b^{norm}, \mathbb{1}_{exists}, b/9].
 \]
-At training time, BLFormer converts only active balls to tokens, appends six fixed pocket tokens, and pads batches with an attention mask.  Horizontal and vertical flips are applied independently with probability 0.5 only to training layouts; this preserves table symmetries without changing labels.  No augmentation is applied to validation or test data.  No resampling is used: the held-out distribution is kept natural, while imbalance is monitored through rare-class analysis and partly addressed by ordinal and joint supervision.  Label counts are clear 994/946, win 607/1333, and potted counts $[739,110,58,44,28,29,96,381,451,4]$ for classes 0--9.
+At training time, BLFormer converts only active balls to tokens, appends six fixed pocket tokens, and pads batches with an attention mask.  Horizontal and vertical flips are applied independently with probability 0.5 only to training layouts; this preserves table symmetries without changing labels.  No augmentation is applied to validation or test data.  No resampling is used: the held-out distribution is kept natural, while imbalance is monitored through rare-class analysis and addressed through joint and marginal supervision.  Label counts are clear 994/946, win 607/1333, and potted counts $[739,110,58,44,28,29,96,381,451,4]$ for classes 0--9.
 
 \section{Method}
 BLFormer has two design commitments: relational scene encoding and joint label modeling.  The encoder follows the Set Transformer view that unordered inputs should be processed as sets \cite{lee2019set}, but it also uses the table geometry that ordinary attention would have to rediscover from few samples.  Following Graphormer-style structural bias \cite{ying2021graphormer}, pair features are mapped to an additive attention bias in every layer.  This lets the model attend with knowledge of distance, direction, pocket route, and obstruction while still learning task-specific representations.
@@ -57,13 +57,7 @@ For tokens $i,j$, the 10-dimensional pair vector $\phi_{ij}$ contains normalized
 \]
 where $f_h$ is a two-layer MLP producing one scalar bias per head and $m_j$ masks padding.  Each encoder block uses pre-normalization, residual attention, and a GELU feed-forward network.  Token embeddings combine type, ball identity, and coordinates.  The pooled layout representation concatenates the CLS token with the mean over valid tokens, reducing dependence on a single summary token.
 
-The potted label is both ordered and multimodal.  A pure ordinal head, motivated by CORAL \cite{cao2020coral}, trains binary thresholds $z_k=\mathbb{1}[y>k]$, but the observed distribution has peaks at 0, 7, and 8.  We therefore evaluate a combined ordinal-class head with cross-entropy plus a weighted ordinal term,
-\[
-  \mathcal{L}_{pot}
-  = \mathrm{CE}(p,y) + \lambda_{ord}
-    \sum_{k=0}^{8}\mathrm{BCE}(\ell_k, \mathbb{1}[y>k]),
-\]
-and a stronger joint-head variant.  The joint head predicts one of $2\times2\times10=40$ states:
+The potted-count target is evaluated as exact 10-class accuracy, and its empirical distribution is multimodal, with dominant modes at 0, 7, and 8.  The selected model therefore treats potted count as a categorical marginal of a stronger joint outcome model rather than as an independent count regressor.  The joint head predicts one of $2\times2\times10=40$ states:
 \[
   c = 20\,y_{clear} + 10\,y_{win} + y_{pot}.
 \]
@@ -73,14 +67,19 @@ Task logits are recovered by marginalizing the 40 logits with log-sum-exp, e.g.
   \log\sum_{w,p}\exp g_{1,w,p}
   - \log\sum_{w,p}\exp g_{0,w,p}.
 \]
-This head explicitly models outcome correlation: a state favorable for potting many balls should also affect clear and win probabilities.  The selected joint variant uses
+The potted-count logits are recovered analogously as
+\[
+  s_{pot}(p)=\log\sum_{c,w}\exp g_{c,w,p}.
+\]
+This head explicitly models outcome correlation: a state favorable for potting many balls should also affect clear and win probabilities.  The selected model uses joint cross-entropy as the main objective and a smaller marginal auxiliary objective:
 \[
   \mathcal{L}= \mathrm{CE}(g,c)
   + 0.5\,(\mathcal{L}_{clear}+\mathcal{L}_{win}+\mathcal{L}_{pot})/3.
 \]
+Here $\mathcal{L}_{clear}$ and $\mathcal{L}_{win}$ are binary cross-entropies on the marginalized clear and win logits, and $\mathcal{L}_{pot}$ is 10-class cross-entropy on the marginalized potted-count logits.
 
 \section{Training and Metrics}
-All experiments use the same deterministic split protocol.  BLFormer is trained with AdamW, learning rate $3\times10^{-4}$, weight decay 0.01, batch size 64, cosine annealing, dropout 0.1, gradient clipping at 1.0, and early stopping with patience 60 over at most 400 epochs.  The model has two encoder layers, four attention heads, and hidden width $d\in\{64,80,88\}$.  The selected joint model uses width 80, feed-forward width 160, CLS+mean pooling, and 121,426 parameters.  We report accuracy for each task and mean accuracy; macro-F1 and potted-count MAE are used for error analysis.  Model selection balances the three validation accuracies instead of optimizing a single task.
+All experiments use the same deterministic split protocol.  BLFormer is trained with AdamW, learning rate $3\times10^{-4}$, weight decay 0.01, batch size 64, cosine annealing, dropout 0.1, gradient clipping at 1.0, and early stopping with patience 60 over at most 400 epochs.  Hidden width is searched over $d\in\{64,80,88\}$ and selected on the internal validation split by a three-task balance criterion: the configuration must maximize the weakest validation margin across clear, win, and potted-count accuracy, rather than using held-out test performance.  The selected joint model uses width 80, two encoder layers, four attention heads, CLS+mean pooling, and 121,426 parameters.  We report accuracy for each task and mean accuracy; macro-F1 and potted-count MAE are used for error analysis.
 
 \section{Experiments and Results}
 Table~\ref{tab:results} is organized to answer a progression of questions.  First, how strong are standard baselines on the same held-out split?  BLCNN is a convolutional baseline over paper-style layout tokens, MLP is a flattened token baseline, and Transformer is a vanilla token baseline without BLFormer geometry bias or joint outcome modeling.  Second, does the BLFormer representation help once the three tasks are predicted together?  Third, does explicit joint supervision help over independent heads?  Baselines are trained per task for 400 epochs; BLFormer rows use internal validation within the training partition.
@@ -99,9 +98,9 @@ Model family & Clear & Win & Potted & Mean \\
 BLCNN baseline & 71.48 & 66.75 & 61.25 & 66.49 \\
 MLP baseline & 69.33 & 67.18 & 55.24 & 63.92 \\
 Transformer baseline & 65.81 & 66.41 & 40.12 & 57.45 \\
-Independent BLFormer, best mean & 69.42 & \textbf{70.45} & 65.81 & 68.56 \\
-Joint Outcome BLFormer, width 80 & 70.96 & 70.19 & 66.92 & 69.36 \\
-Joint Outcome BLFormer + auxiliary, width 80 & \textbf{71.82} & 69.67 & \textbf{67.10} & \textbf{69.53} \\
+Independent-head BLFormer & 69.42 & \textbf{70.45} & 65.81 & 68.56 \\
+Joint-outcome BLFormer & 70.96 & 70.19 & 66.92 & 69.36 \\
+Joint-outcome BLFormer with auxiliary loss & \textbf{71.82} & 69.67 & \textbf{67.10} & \textbf{69.53} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -131,11 +130,6 @@ Chengxuan Ying, Tianle Cai, Shengjie Luo, Shuxin Zheng, Guolin Ke, Di He, Yanmin
 Juho Lee, Yoonho Lee, Jungtaek Kim, Adam R. Kosiorek, Seungjin Choi, and Yee Whye Teh.
 \newblock Set Transformer: A Framework for Attention-based Permutation-Invariant Neural Networks.
 \newblock \emph{ICML}, 2019. \url{https://arxiv.org/abs/1810.00825}.
-
-\bibitem{cao2020coral}
-Wenzhi Cao, Vahid Mirjalili, and Sebastian Raschka.
-\newblock Rank Consistent Ordinal Regression for Neural Networks with Application to Age Estimation.
-\newblock \emph{Pattern Recognition Letters}, 2020. \url{https://arxiv.org/abs/1901.07884}.
 
 \end{thebibliography}
 
