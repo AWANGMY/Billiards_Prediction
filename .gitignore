@@ -21,3 +21,6 @@ Output/
 /Doc/*
 !/Doc/Final_report/
 !/Doc/Final_report/**
+!/Doc/reproduction_check_20260707/
+!/Doc/reproduction_check_20260707/**
+
