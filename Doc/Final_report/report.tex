@@ -36,7 +36,7 @@ The prediction task asks a simple question: given the observed layout after a br
 BLFormer is designed around these two mismatches.  It treats active balls and pockets as tokens, uses geometric pair features as attention bias, and replaces independent prediction with a joint outcome head.  The objective of this report is not to reproduce historical paper-table numbers; it is to give a clean held-out comparison of these modeling choices under one protocol, with all selection performed inside the training partition.
 
 \section{Dataset and Preprocessing}
-The dataset contains 1,940 accepted post-break table states: 776 for training and 1,164 for held-out testing.  For model-family selection, the training layouts are split into 660 internal training samples and 116 validation samples.  The input is the observed table state after the break; balls already potted during the break are therefore absent and may be masked.  The labels describe downstream outcomes from that state: clear, win, and potted count.  This is important: the setup is a post-break-state predictor, not a pre-impact predictor.
+The layouts are derived from the public billiards sports dataset introduced by Zhang et al.~\cite{zhang2024billiards}, and the cleaned prediction subset used here contains 1,940 accepted post-break table states: 776 for training and 1,164 for held-out testing.  For model-family selection, the training layouts are split into 660 internal training samples and 116 validation samples.  The input is the observed table state after the break; balls already potted during the break are therefore absent and may be masked.  The labels describe downstream outcomes from that state: clear, win, and potted count.  This is important: the setup is a post-break-state predictor, not a pre-impact predictor.
 
 Preprocessing is kept explicit because small changes in this dataset can alter conclusions.  Spreadsheets are aligned to coordinate XML files by frame.  Rows are removed when labels are outside valid ranges, remarks contain cue-ball/foul/illegal/golden-break markers, the XML does not contain exactly ten markers, or the normalized layout duplicates an earlier accepted sample.  Duplicate keys are rounded normalized ball features at four decimals.  Coordinates are mapped to a 200-by-100 table: files with the long axis stored first use $(x/200,y/100)$, otherwise axes are swapped; values are clamped to $[0,1]$ to remove out-of-table artifacts.  Balls potted during the break receive existence zero and coordinates $(0,0)$ so they are not obstacles.  Each packed ball feature is
 \[
@@ -122,6 +122,11 @@ The dominant failure mode is long-tail potted-count behavior.  Although exact po
 The report frames billiards break prediction as relational scene understanding with coupled labels.  BLFormer follows that framing by combining object-set encoding, geometry-biased attention, and joint outcome supervision.  Under the held-out protocol, the validation-selected joint model achieves the strongest reported result: 71.82\% clear, 69.67\% win, and 67.10\% potted-count accuracy.  The remaining weakness is not the average score but rare-count behavior, which points to calibration and multi-seed evaluation as the next improvements.
 
 \begin{thebibliography}{9}
+\bibitem{zhang2024billiards}
+Qianru Zhang, Zheng Wang, Cheng Long, and Siu-Ming Yiu.
+\newblock Billiards Sports Analytics: Datasets and Tasks.
+\newblock \emph{arXiv preprint arXiv:2407.19686}, 2024. \url{https://arxiv.org/abs/2407.19686}.
+
 \bibitem{ying2021graphormer}
 Chengxuan Ying, Tianle Cai, Shengjie Luo, Shuxin Zheng, Guolin Ke, Di He, Yanming Shen, and Tie-Yan Liu.
 \newblock Do Transformers Really Perform Bad for Graph Representation?

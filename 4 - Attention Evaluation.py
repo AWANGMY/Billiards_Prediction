@@ -9,7 +9,7 @@ from ClassesML.Transformer import SpatialAttention
 from Utilities.Utilities import Utilities
 
 
-device = Utilities.resolve_device(allow_cpu=True)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 path_parent_project = os.getcwd()
 dataset_root = os.path.join(path_parent_project, "Dataset")
 processed_path = os.path.join(dataset_root, "processed", "billiards_layout.pt")
