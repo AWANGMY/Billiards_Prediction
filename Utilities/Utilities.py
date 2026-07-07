@@ -52,24 +52,6 @@ class Utilities:
         torch.backends.cudnn.deterministic = True
 
     @staticmethod
-    def resolve_device(device_name=None, allow_cpu=False):
-
-        if device_name is None:
-            if torch.cuda.is_available():
-                return torch.device("cuda")
-            if allow_cpu:
-                return torch.device("cpu")
-            raise RuntimeError("CUDA is not available.")
-
-        device = torch.device(device_name)
-        if device.type == "cuda" and not torch.cuda.is_available():
-            if allow_cpu:
-                return torch.device("cpu")
-            raise RuntimeError("CUDA is not available.")
-
-        return device
-
-    @staticmethod
     def format_float(value):
 
         if value is None:

@@ -11,9 +11,8 @@ from Utilities.Utilities import Utilities
 
 TASKS = ["clear", "win", "potted_after_break"]
 
-device = Utilities.resolve_device(allow_cpu=True)
-path_parent_project = os.getcwd()
-dataset_root = os.path.join(path_parent_project, "Dataset")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+dataset_root = "Dataset"
 processed_path = os.path.join(dataset_root, "processed", "billiards_layout.pt")
 output_dir = os.path.join("Output", "reproduction", "formal_other_methods", "paper40_clean_wd0.001")
 seed = 123
@@ -32,7 +31,7 @@ os.makedirs(output_dir, exist_ok=True)
 
 print("device:", device)
 print("processed_path:", processed_path)
-print("split_sizes:", {"train": len(splits["train"]), "test": len(splits["test"])} )
+print("split_sizes:", {"train": len(splits["train"]), "test": len(splits["test"])})
 
 results = []
 

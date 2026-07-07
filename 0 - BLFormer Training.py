@@ -9,9 +9,8 @@ from ClassesML.TrainerClassifier import TrainerBLFormer
 from Utilities.Utilities import Utilities
 
 
-device = Utilities.resolve_device(allow_cpu=True)
-path_parent_project = os.getcwd()
-dataset_root = os.path.join(path_parent_project, "Dataset")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+dataset_root = "Dataset"
 processed_path = os.path.join(dataset_root, "processed", "billiards_layout_paper40.pt")
 run_name = "joint_d80_clsmean_marg0.5_fixed250"
 output_dir = os.path.join("Output", "blformer_paper40", run_name)
