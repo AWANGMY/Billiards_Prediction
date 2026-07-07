@@ -28,7 +28,7 @@ class TrainerClassifier:
         self.train_loader = train_loader
         self.valid_loader = valid_loader
 
-    def unpack_batch(self, batch):
+    def _unpack_batch(self, batch):
 
         if len(batch) == 2:
             x, y = batch
@@ -38,7 +38,7 @@ class TrainerClassifier:
 
         return x, y, sample_indices
 
-    def run_loader(self, loader, training=False, keep_rows=False):
+    def _run_single_loader(self, loader, training=False, keep_rows=False):
 
         if loader is None:
             return None, []
@@ -55,7 +55,7 @@ class TrainerClassifier:
         rows = []
 
         for batch in loader:
-            x, y, sample_indices = self.unpack_batch(batch)
+            x, y, sample_indices = self._unpack_batch(batch)
             x = x.to(self.device)
             y = y.to(self.device)
 
@@ -68,24 +68,23 @@ class TrainerClassifier:
                     loss.backward()
                     self.scope.optimizer.step()
 
-            batch_size = int(y.size(0))
             predicted = torch.argmax(y_hat, dim=1)
-            correct = int((predicted == y).sum().item())
+            batch_size = int(y.size(0))
+            batch_accuracy = Utilities.compute_accuracy(y, y_hat)
+            batch_correct = int((predicted == y).sum().item())
 
             total_loss += float(loss.item()) * batch_size
-            total_accuracy += Utilities.compute_accuracy(y, y_hat)
-            total_correct += correct
+            total_accuracy += batch_accuracy
+            total_correct += batch_correct
             total_count += batch_size
 
             if keep_rows and sample_indices is not None:
                 for row_index in range(batch_size):
-                    rows.append(
-                        {
-                            "sample_index": int(sample_indices[row_index].item()),
-                            "y_true": int(y[row_index].item()),
-                            "y_pred": int(predicted[row_index].item()),
-                        }
-                    )
+                    rows.append({
+                        "sample_index": int(sample_indices[row_index].item()),
+                        "y_true": int(y[row_index].item()),
+                        "y_pred": int(predicted[row_index].item()),
+                    })
 
         metrics = {
             "loss": total_loss / total_count if total_count > 0 else None,
@@ -105,12 +104,14 @@ class TrainerClassifier:
         self.train_accuracy_list = []
         self.valid_accuracy_list = []
 
-        for epoch in range(self.hyperparameters["max_epochs"]):
-            train_metrics, _ = self.run_loader(self.train_loader, training=True)
+        max_epochs = self.hyperparameters["max_epochs"]
+
+        for epoch in range(max_epochs):
+            train_metrics, _ = self._run_single_loader(self.train_loader, training=True)
             self.train_loss_list.append(train_metrics["loss"])
             self.train_accuracy_list.append(train_metrics["accuracy"])
 
-            print("Epoch:" + str(epoch + 1) + "/" + str(self.hyperparameters["max_epochs"]))
+            print("Epoch:" + str(epoch + 1) + "/" + str(max_epochs))
             print(
                 "Training Loss:" + str(train_metrics["loss"])
                 + " - Train Accuracy:" + str(train_metrics["accuracy"])
@@ -124,11 +125,11 @@ class TrainerClassifier:
             }
 
             if self.valid_loader is not None:
-                valid_metrics, _ = self.run_loader(self.valid_loader, training=False)
+                valid_metrics, _ = self._run_single_loader(self.valid_loader, training=False)
                 self.valid_loss_list.append(valid_metrics["loss"])
                 self.valid_accuracy_list.append(valid_metrics["accuracy"])
 
-                print("Epoch:" + str(epoch + 1) + "/" + str(self.hyperparameters["max_epochs"]))
+                print("Epoch:" + str(epoch + 1) + "/" + str(max_epochs))
                 print(
                     "Validation Loss:" + str(valid_metrics["loss"])
                     + " - Validation Accuracy:" + str(valid_metrics["accuracy"])
@@ -144,7 +145,7 @@ class TrainerClassifier:
 
     def evaluate(self, loader):
 
-        return self.run_loader(loader, training=False, keep_rows=True)
+        return self._run_single_loader(loader, training=False, keep_rows=True)
 
 
 class TrainerBLFormer:
