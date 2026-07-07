@@ -146,30 +146,6 @@ class TransformerEncoderBlock(nn.Module):
         return x
 
 
-class SpatialAttentionBlock(nn.Module):
-
-    def __init__(self, input_dim, hidden_dim, activation=nn.ReLU()):
-
-        super(SpatialAttentionBlock, self).__init__()
-
-        self.attention = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
-            activation,
-            nn.Linear(hidden_dim, 1)
-        )
-        self.attention_weights = None
-
-    def forward(self, x):
-
-        weights = self.attention(x)
-        weights = torch.softmax(weights, dim=1)
-        self.attention_weights = weights
-        x = x * weights
-        x = x.sum(dim=1)
-
-        return x
-
-
 class GeometricMultiHeadAttentionBlock(nn.Module):
 
     def __init__(self, d_model, num_heads, dropout_rate=0.1):

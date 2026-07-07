@@ -48,7 +48,7 @@ class DatasetLoader:
             return data["x_paper"].long()
         elif model_name == "MLP":
             return data["x_paper"].float().reshape(data["x_paper"].shape[0], -1)
-        elif model_name in ["Transformer", "Attention"]:
+        elif model_name == "Transformer":
             return data["x_paper"].float()
         else:
             raise ValueError("Unknown model name: " + str(model_name))

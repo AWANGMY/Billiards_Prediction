@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from ClassesML.Blocks import BallProjectionBlock, DenseBlock, PositionalEncoding, TransformerEncoderBlock, SpatialAttentionBlock
+from ClassesML.Blocks import BallProjectionBlock, PositionalEncoding, TransformerEncoderBlock
 from Utilities.Utilities import Utilities
 
 
@@ -62,51 +62,3 @@ class Transformer(nn.Module):
 
         return y_hat
 
-
-class SpatialAttention(nn.Module):
-
-    def __init__(self, hyperparameters):
-
-        nn.Module.__init__(self)
-
-        self.input_dim = hyperparameters["input_dim"]
-        self.output_dim = hyperparameters["output_dim"]
-        self.embedding_dim = hyperparameters["embedding_dim"]
-        self.hidden_layers_sizes = hyperparameters["hidden_layers_sizes"]
-        self.activation = hyperparameters["activation"]
-        self.dropout_rate = hyperparameters["dropout_rate"]
-
-        self.embedding_layer = BallProjectionBlock(
-            in_size=self.input_dim[-1],
-            out_size=self.embedding_dim,
-            activation=Utilities.get_activation(self.activation),
-            dropout_rate=self.dropout_rate
-        )
-
-        self.attention_layer = SpatialAttentionBlock(
-            input_dim=self.embedding_dim,
-            hidden_dim=self.hidden_layers_sizes[0],
-            activation=Utilities.get_activation(self.activation)
-        )
-
-        self.classifier = nn.Sequential(
-            DenseBlock(
-                in_size=self.embedding_dim,
-                out_size=self.hidden_layers_sizes[0],
-                activation=Utilities.get_activation(self.activation),
-                batch_normalization=False,
-                dropout_rate=self.dropout_rate
-            ),
-            nn.Linear(
-                in_features=self.hidden_layers_sizes[0],
-                out_features=self.output_dim
-            )
-        )
-
-    def forward(self, x):
-
-        x = self.embedding_layer(x)
-        x = self.attention_layer(x)
-        y_hat = self.classifier(x)
-
-        return y_hat

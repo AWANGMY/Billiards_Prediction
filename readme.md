@@ -2,13 +2,12 @@
 
 ## Project Objective
 
-This project reproduces break-shot outcome prediction in billiards and compares five models:
+This project reproduces break-shot outcome prediction in billiards and compares four model families:
 
 - BLFormer
 - BLCNN
 - MLP
 - Transformer
-- Attention
 
 The prediction tasks are:
 
@@ -74,7 +73,6 @@ python "0 - BLFormer Training.py"
 python "1 - BLCNN Training.py"
 python "2 - MLP Training.py"
 python "3 - Transformer Training.py"
-python "4 - Attention Training.py"
 ```
 
 ## How to Run Inference / Evaluation
@@ -86,7 +84,6 @@ python "0 - BLFormer Evaluation.py"
 python "1 - BLCNN Evaluation.py"
 python "2 - MLP Evaluation.py"
 python "3 - Transformer Evaluation.py"
-python "4 - Attention Evaluation.py"
 ```
 
 ## Expected Output / Results
