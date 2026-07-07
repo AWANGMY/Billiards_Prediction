@@ -34,7 +34,7 @@
   },
   "joint_summary": {
     "best_trial": {
-      "best_epoch": 259,
+      "best_epoch": 250,
       "best_val_metrics": {
         "clean_target_mean_margin": 9.482759237289429,
         "clean_target_min_margin": 7.8326826497192314,
@@ -140,7 +140,7 @@
     "final_full_train": {
       "clear_weight": 1.0,
       "dropout_rate": 0.1,
-      "epochs": 259,
+      "epochs": 250,
       "hyperparameters": {
         "bias_hidden_dim": 32,
         "d_model": 80,
@@ -531,7 +531,7 @@
     },
     {
       "clear": 71.82130813598633,
-      "epoch": 259,
+      "epoch": 250,
       "f1": 0.5640444462467906,
       "family": "Joint",
       "mean": 69.53035593032837,

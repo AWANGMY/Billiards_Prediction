@@ -65,7 +65,7 @@ pip install -r requirements.txt
 
 Edit the configuration block at the top of the corresponding training script, then run the script.
 The default BLFormer training entrypoint is configured for the paper40 fixed-epoch
-reproduction setting: `billiards_layout_paper40.pt`, 259 epochs, and
+reproduction setting: `billiards_layout_paper40.pt`, 250 epochs, and
 `joint_marginal_weight=0.5`. This approximates the Final Report configuration
 without running the internal validation search.
 

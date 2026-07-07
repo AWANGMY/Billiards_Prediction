@@ -16,14 +16,14 @@ processed_path = os.path.join(dataset_root, "processed", "billiards_layout_paper
 checkpoint_path = os.path.join(
     "Output",
     "blformer_paper40",
-    "joint_d80_clsmean_marg0.5_fixed259",
-    "BLFormer_joint_d80_clsmean_marg0.5_fixed259.pt",
+    "joint_d80_clsmean_marg0.5_fixed250",
+    "BLFormer_joint_d80_clsmean_marg0.5_fixed250.pt",
 )
 output_dir = os.path.join(
     "Output",
     "blformer_paper40",
-    "joint_d80_clsmean_marg0.5_fixed259",
-    "BLFormer_joint_d80_clsmean_marg0.5_fixed259_evaluation",
+    "joint_d80_clsmean_marg0.5_fixed250",
+    "BLFormer_joint_d80_clsmean_marg0.5_fixed250_evaluation",
 )
 split = "test"
 batch_size = 64
