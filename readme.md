@@ -8,7 +8,6 @@ This project reproduces break-shot outcome prediction in billiards and compares 
 - BLCNN
 - MLP
 - Transformer
-- 
 The prediction tasks are:
 
 ```text
